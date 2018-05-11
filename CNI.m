@@ -106,15 +106,47 @@ classdef CNI < handle
                 F = MSM/MSE;
                 results.phase(v) = atan2(b(2),b(1));
                 results.p(v) = 1-fcdf(F,df1,df2);
-            end 
+            end
         end
         
-        % tuning model analysis
-        function results = tuning_model(self,data,PARAMS,fun)
-            results = fun(2); 
+        % Gaussian tuning (one-dimensional)
+        function results = gauss_tuning(self,FUN,space,stimulus,data)
+            n_mu = numel(space{1});
+            n_sigma = numel(space{2});
+            n_total = n_mu*n_sigma;
+            i = (0:n_total-1)';
+            ID = [mod(i,n_mu),floor(i/(n_mu))]+1;
+            X = zeros(self.n_samples,n_total);
+            for i=1:n_total
+                X(:,i) = FUN(stimulus.value,space{1}(ID(i,1)),...
+                    space{2}(ID(i,2))).*stimulus.presence;
+            end
+            X_fft = fft(X);
+            hrf_fft = fft(repmat([self.hrf;...
+                zeros(self.n_samples-self.l_hrf,1)],[1,n_total]));
+            X = zscore(ifft(X_fft.*hrf_fft))';
+            
+            Mag_X = sqrt(sum(X.^2,2));
+            Mag_D  = sqrt(sum(data.^2));
+            Sdev   = std(X,[],2);
+            
+            results.c_similarity = zeros(self.n_voxels,1);
+            results.mu = zeros(self.n_voxels,1);
+            results.sigma = zeros(self.n_voxels,1);
+            for v=1:self.n_voxels
+                CS = (X*data(:,v))...
+                    ./(Mag_X*Mag_D(v));
+                id = isinf(CS)...
+                    |isnan(CS)|(Sdev<.99);
+                CS(id) = 0;
+                [results.c_similarity(v),j] = max(CS);
+                
+                results.mu(v) = space{1}(ID(j,1));
+                results.sigma(v) = space{2}(ID(j,2));
+            end
         end
+        
     end
-    
 end
 
 
