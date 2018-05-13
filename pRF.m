@@ -37,13 +37,13 @@ classdef pRF < handle
         n_points
         l_hrf
         r_image
-        hrf
         idx
         XY
         Sigma
     end
     
     properties (Access = public)
+        hrf
         stimulus
         tc_fft
     end
@@ -82,6 +82,10 @@ classdef pRF < handle
             [~,path] = uigetfile('*.png',...
                 'Please select the first .png file');
             files = dir([path,'*.png']);
+            
+            wb = waitbar(0,'loading stimulus...',...
+                'Name','pRF mapping tool');
+            
             im = imread([path,files(1).name]);
             self.stimulus = false(self.r_image,self.r_image,...
                 self.n_samples);
@@ -92,17 +96,24 @@ classdef pRF < handle
             str  = sprintf('%s#', name{:});
             num  = sscanf(str, [prefix,'%d.png#']);
             [~, index] = sort(num);
+            
             for t=2:self.n_samples
                 im = imread([path,files(index(t)).name]);
                 self.stimulus(:,:,t) = logical(im(:,:,1));
+                waitbar(t/self.n_samples,wb)
             end
             self.stimulus = reshape(self.stimulus,...
                 self.r_image^2,self.n_samples);
+            close(wb)
         end
         
         function create_timecourses(self,varargin)
             % bla bla
             %
+            
+            wb = waitbar(0,'creating timecourse...',...
+                'Name','pRF mapping tool');
+            
             p = inputParser;
             addOptional(p,'number_XY',30);
             addOptional(p,'min_XY',10);
@@ -138,15 +149,22 @@ classdef pRF < handle
                 y = self.XY(self.idx(j,2));
                 sigma = self.Sigma(self.idx(j,3))*abs(x+y*1i);
                 W(j,:) = self.gauss(x,y,sigma,X,Y)';
+                waitbar(j/self.n_points*.9,wb);
             end
             
             tc = W * self.stimulus;
-            self.tc_fft = fft(tc);
+            waitbar(1,wb);
+            self.tc_fft = fft(tc');
+            close(wb)
         end
         
         function results = mapping(self,data,varargin)
             % bla bla
             %
+            
+            wb = waitbar(0,'mapping population receptive fields...',...
+                'Name','pRF mapping tool');
+            
             p = inputParser;
             addRequired(p,'data',@isnumeric);
             addOptional(p,'stimulus',[]);
@@ -186,7 +204,7 @@ classdef pRF < handle
                 mag_tc = sqrt(sum(tc.^2,2));
                 for v=1:numXYZ
                     if mean_signal(v)>threshold
-                        CS = (TC*data(:,v))./...
+                        CS = (tc*data(:,v))./...
                             (mag_tc*mag_d(v));
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
@@ -195,6 +213,7 @@ classdef pRF < handle
                         results.Y(v) = self.XY(self.idx(j,2));
                         results.Sigma(v) = self.Sigma(self.idx(j,3));
                     end
+                    waitbar(v/numXYZ,wb)
                 end
             else
                 for v=1:numXYZ
@@ -212,16 +231,18 @@ classdef pRF < handle
                         [results.R(v),j] = max(CS);
                         results.X(v) = self.XY(self.idx(j,1));
                         results.Y(v) = self.XY(self.idx(j,2));
-                        results.Sigma(v) = self.Sgima(self.idx(j,3));
+                        results.Sigma(v) = self.Sigma(self.idx(j,3));
                     end
+                    waitbar(v/numXYZ,wb)
                 end
             end
-            results.R = reshape(Results.R,numX,numY,numZ);
-            results.X = reshape(Results.X,numX,numY,numZ);
-            results.X = reshape(Results.Y,numX,numY,numZ);
-            results.Sigma = reshape(Results.Sigma,numX,numY,numZ);
+            results.R = reshape(results.R,numX,numY,numZ);
+            results.X = reshape(results.X,numX,numY,numZ);
+            results.X = reshape(results.Y,numX,numY,numZ);
+            results.Sigma = reshape(results.Sigma,numX,numY,numZ);
             results.Eccentricity = abs(results.X+results.Y*1i);
             results.Polar_Angle = angle(results.X+results.Y*1i);
+            close(wb)
         end
     end
 end
