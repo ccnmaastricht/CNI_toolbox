@@ -23,8 +23,37 @@ classdef pRF < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-   
-    
+    % Population receptive field (pRF) mapping tool.
+    % 
+    % prf = pRF(scan_params) creates an instance of the pRF class.
+    % scan_params is a structure with three required fields
+    %   - f_sampling: sampling frequency (1/TR)
+    %   - n_samples : number of samples (volumes)
+    %   - r_image   : x/y resolution of (square) stimulus images. This
+    %                 corresponds to width & height of stimulus images in
+    %                 pixels.
+    %
+    % optional inputs are
+    %   - hrf       : a column vector containing a hemodynamic response.
+    %                 This response is then used for every voxels.        
+    %                 Alternatively, a time-by-voxels matrix with a unique 
+    %                 hemodynamic response per voxel can be provided.
+    %                 By default a two-gamma hemodynamic response function
+    %                 is generated internally given the scan parameters.
+    %
+    % this class has the following functions
+    %
+    %   - hrf = pRF.get_hrf();
+    %   - stimulus = pRF.get_stimulus();
+    %   - tc = pRF.get_timecourses();
+    %   - pRF.set_hrf(hrf);
+    %   - pRF.set_stimulus(stimulus);
+    %   - pRF.import_stimulus();
+    %   - pRF.create_timecourses();
+    %   - pRF.mapping(data);
+    %
+    % use help pRF.function to get more detailed help on any specific
+    % function (e.g. help pRF.mapping)
     properties (Access = private)
         % functions
         two_gamma               % two gamma hrf function
@@ -40,9 +69,6 @@ classdef pRF < handle
         idx
         XY
         Sigma
-    end
-    
-    properties (Access = public)
         hrf
         stimulus
         tc_fft
@@ -76,9 +102,58 @@ classdef pRF < handle
             
         end
         
-        function load_stimulus(self)
-            % bla bla
-            %
+        function hrf = get_hrf(self)
+            % returns the hemodynamic response used by the class. 
+            % If a single hrf is used for every voxel, this function
+            % returns a column vector.
+            % If a unique hrf is used for each voxel, this function returns
+            % a time-by-voxels matrix.
+            hrf = self.hrf;
+        end
+        
+        function stimulus = get_stimulus(self)
+            % returns the stimulus used by the class as a 3D matrix of
+            % dimensions width-by-height-by-time.
+           stimulus = reshape(self.stimulus,self.r_image,...
+               self.r_image,self.n_samples); 
+        end
+        
+        function tc = get_timecourses(self)
+            % returns the timecourses predicted based on the effective
+            % stimulus and each combination of pRF model parameters as a
+            % time-by-combinations matrix. Note that the predicted
+            % timecourses have not been convolved with a hemodynamic
+            % response.
+            % 
+           tc = ifft(self.tc_fft); 
+        end
+        
+        function set_hrf(self,hrf)
+            % replace the hemodynamic resonse with a new hrf column vector
+            % or time-by-voxels hrf matrix.
+            self.hrf = hrf;
+        end
+        
+        function set_stimulus(self,stimulus)
+            % provide a stimulus matrix. 
+            % This is useful if the .png files have already been imported 
+            % and stored in matrix form. 
+            % Note that the provided stimulus matrix can be either 3D 
+            % (width-by-height-by-time) or 2D (width*height-by-time).
+            if ndims(stimulus==3)
+            self.stimulus = reshape(stimulus,self.r_image^2,...
+                self.n_samples);
+            else
+                self.stimulus = stimulus;
+            end
+        end
+
+        function import_stimulus(self)
+            % imports the series of .png files constituting the stimulation
+            % protocol of the pRF experiment and stores them internally in
+            % a matrix format (width-by-height-by-time). 
+            % The stimulus is required to generate timecourses.
+        
             [~,path] = uigetfile('*.png',...
                 'Please select the first .png file');
             files = dir([path,'*.png']);
@@ -108,8 +183,17 @@ classdef pRF < handle
         end
         
         function create_timecourses(self,varargin)
-            % bla bla
+            % creates predicted timecourses based on the effective stimulus
+            % and a range of isotropic receptive fields for a grid of
+            % location (x,y) and size parameters.
             %
+            % optional inputs are
+            %  - min_XY     : lower bound of x & y location   (default = -10.0)
+            %  - max_XY     : upper bound of x & y location   (default =  10.0)
+            %  - number_XY  : steps from lower to upper bound (default =  30.0)
+            %  - min_size   : lower bound of RF size          (default =   0.2)
+            %  - max_size   : upper bound of RF size          (default =   7.0)
+            %  - number_size: steps from lower to upper bound (default =  10.0)
             
             wb = waitbar(0,'creating timecourse...',...
                 'Name','pRF mapping tool');
@@ -159,28 +243,28 @@ classdef pRF < handle
         end
         
         function results = mapping(self,data,varargin)
-            % bla bla
+            % identifies the best fitting timecourse for each voxel and
+            % returns the corresponding Gaussian pRF model parameters 
+            % (x,y,sigma) as well as the correlation between empirically
+            % observed BOLD signal and the model timecourse.
             %
+            % required inputs are
+            %  - data      : a 4-dimensional matrix of empirically observed 
+            %                BOLD timecourses. Columns correspond to time 
+            %                (volumes/TRs).
+            % optional inputs are
+            %  - threshold : minimum voxel intensity (default = 100.0)
+
             
             wb = waitbar(0,'mapping population receptive fields...',...
                 'Name','pRF mapping tool');
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
-            addOptional(p,'stimulus',[]);
             addOptional(p,'threshold',100);
             p.parse(data,varargin{:});
             
             data = p.Results.data;
-            self.stimulus = p.Results.stimulus;
-            if ndims(self.stimulus)==3
-                self.r_image = size(self.stimulus,1);
-                self.stimulus = reshape(self.stimulus,...
-                    self.r_image^2,self.n_samples);
-            else
-                self.r_image = sqrt(size(self.stimulus,1));
-            end
-            
             threshold = p.Results.threshold;
 
             [~,numX,numY,numZ] = size(data);
