@@ -50,10 +50,17 @@ classdef pRF < handle
     %   - pRF.set_stimulus(stimulus);
     %   - pRF.import_stimulus();
     %   - pRF.create_timecourses();
-    %   - pRF.mapping(data);
+    %   - results = pRF.mapping(data);
     %
     % use help pRF.function to get more detailed help on any specific
     % function (e.g. help pRF.mapping)
+    %
+    % typical workflow:
+    % 1. prf = pRF(scan_params);
+    % 2. prf.import_stimulus();
+    % 3. prf.create_timecourses();
+    % 4. results = prf.mapping(data);
+    
     properties (Access = private)
         % functions
         two_gamma               % two gamma hrf function
@@ -78,6 +85,7 @@ classdef pRF < handle
         
         function self = pRF(scan_params,varargin)
             % constructor
+            addpath(pwd)
             p = inputParser;
             addRequired(p,'scan_params',@isstruct);
             addOptional(p,'hrf',[]);
@@ -244,9 +252,17 @@ classdef pRF < handle
         
         function results = mapping(self,data,varargin)
             % identifies the best fitting timecourse for each voxel and
-            % returns the corresponding Gaussian pRF model parameters 
-            % (x,y,sigma) as well as the correlation between empirically
-            % observed BOLD signal and the model timecourse.
+            % returns a structure with the following fields 
+            %  - R: model fit per voxel (correlation between empirically 
+            %       observed BOLD signal and model timecourse)
+            %  - X 
+            %  - Y
+            %  - Sigma 
+            %  - Eccentricity
+            %  - Polar_Angle
+            %
+            % each field is 3-dimensional corresponding to the volumetric
+            % dimensions of the data.
             %
             % required inputs are
             %  - data      : a 4-dimensional matrix of empirically observed 
