@@ -26,23 +26,20 @@ classdef pRF < handle
     % Population receptive field (pRF) mapping tool.
     %
     % prf = pRF(scan_params) creates an instance of the pRF class.
-    % scan_params is a structure with three required fields
+    % scan_params is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
-    %   - n_samples : number of samples (volumes or TRs)
-    %   - n_rows    : number of rows (in-plane)
-    %   - n_cols    : number of columns (in-plance)
+    %   - n_samples : number of samples (volumes/TRs)
+    %   - n_rows    : number of rows (in-plane resolution)
+    %   - n_cols    : number of columns (in-plance resolution)
     %   - n_slices  : number of slices
-    %   - r_image   : x/y resolution of (square) stimulus images. This
-    %                 corresponds to width & height of stimulus images in
-    %                 pixels.
+    %   - w_stimulus: width of stimulus images in pixels
+    %   - h_stimulus: height of stimulus images in pixels
     %
     % optional inputs are
-    %   - hrf       : a column vector containing a hemodynamic response.
-    %                 This response is then used for every voxel.
-    %                 Alternatively, a 4D matrix with a unique
-    %                 hemodynamic response per voxel can be provided.
-    %                 By default a two-gamma hemodynamic response function
-    %                 is generated internally given the scan parameters.
+    %   - hrf       : either a column vector containing a single hemodynamic response used for every voxel;
+    %                 or a 4D matrix with a unique hemodynamic response per voxel.
+    %                 By default the canonical two-gamma hemodynamic response function is generated internally 
+    %                 based on the scan parameters.
     %
     % this class has the following functions
     %
@@ -55,8 +52,7 @@ classdef pRF < handle
     %   - pRF.create_timecourses();
     %   - results = pRF.mapping(data);
     %
-    % use help pRF.function to get more detailed help on any specific
-    % function (e.g. help pRF.mapping)
+    % use help pRF.function to get more detailed help on any specific function (e.g. help pRF.mapping)
     %
     % typical workflow:
     % 1. prf = pRF(scan_params);
@@ -82,9 +78,11 @@ classdef pRF < handle
         n_slices
         n_total
         l_hrf
-        r_image
+        w_stimulus
+        h_stimulus
         idx
-        XY
+        X
+        Y
         Sigma
         hrf
         stimulus
@@ -115,9 +113,10 @@ classdef pRF < handle
             self.n_cols = p.Results.scan_params.n_cols;
             self.n_slices = p.Results.scan_params.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
-            self.r_image = p.Results.scan_params.r_image;
-            self.l_hrf = size(p.Results.hrf,1);
+            self.w_stimulus = p.Results.scan_params.w_stimulus;
+            self.h_stimulus = p.Results.scan_params.h_stimulus;
             if ~isempty(p.Results.hrf)
+                self.l_hrf = size(p.Results.hrf,1);
                 if ndims(p.Results.hrf)==4
                     self.hrf = reshape(p.Results.hrf,...
                         self.l_hrf,self.n_total);
@@ -127,16 +126,15 @@ classdef pRF < handle
                 
             else
                 self.hrf = self.two_gamma(0:self.p_sampling:34)';
+                self.l_hrf = numel(self.hrf);
             end
             
         end
         
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function
-            % returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns
-            % a 4-dimensional matrix with columns corresponding to time.
+            % If a single hrf is used for every voxel, this function returns a column vector.
+            % If a unique hrf is used for each voxel, this function returns a 4-dimensional matrix with columns corresponding to time.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
                     self.n_rows,self.n_cols,self.n_slices);
@@ -146,18 +144,14 @@ classdef pRF < handle
         end
         
         function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of
-            % dimensions width-by-height-by-time.
-            stimulus = reshape(self.stimulus,self.r_image,...
-                self.r_image,self.n_samples);
+            % returns the stimulus used by the class as a 3D matrix of dimensions width-by-height-by-time.
+            stimulus = reshape(self.stimulus,self.h_stimulus,...
+                self.w_stimulus,self.n_samples);
         end
         
         function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the effective
-            % stimulus and each combination of pRF model parameters as a
-            % time-by-combinations matrix. Note that the predicted
-            % timecourses have not been convolved with a hemodynamic
-            % response.
+            % returns the timecourses predicted based on the effective stimulus and each combination of pRF model parameters as a time-by-combinations matrix.
+            % Note that the predicted timecourses have not been convolved with a hemodynamic response.
             %
             tc = ifft(self.tc_fft);
         end
@@ -175,12 +169,11 @@ classdef pRF < handle
         
         function set_stimulus(self,stimulus)
             % provide a stimulus matrix.
-            % This is useful if the .png files have already been imported
-            % and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D
-            % (width-by-height-by-time) or 2D (width*height-by-time).
+            % This is useful if the .png files have already been imported and stored in matrix form.
+            % Note that the provided stimulus matrix can be either 3D (width-by-height-by-time) or 2D (width*height-by-time).
             if ndims(stimulus==3)
-                self.stimulus = reshape(stimulus,self.r_image^2,...
+                self.stimulus = reshape(stimulus,...
+                    self.w_stimulus*self.h_stimulus,...
                     self.n_samples);
             else
                 self.stimulus = stimulus;
@@ -188,9 +181,8 @@ classdef pRF < handle
         end
         
         function import_stimulus(self)
-            % imports the series of .png files constituting the stimulation
-            % protocol of the pRF experiment and stores them internally in
-            % a matrix format (width-by-height-by-time).
+            % imports the series of .png files constituting the stimulation protocol of the pRF experiment.
+            % This series is stored internally in a matrix format (width-by-height-by-time).
             % The stimulus is required to generate timecourses.
             
             [~,path] = uigetfile('*.png',...
@@ -201,7 +193,7 @@ classdef pRF < handle
             wb = waitbar(0,text,'Name',self.is);
             
             im = imread([path,files(1).name]);
-            self.stimulus = zeros(self.r_image,self.r_image,...
+            self.stimulus = zeros(self.h_stimulus,self.w_stimulus,...
                 self.n_samples);
             self.stimulus(:,:,1) = im(:,:,1);
             l = regexp(files(1).name,'\d')-1;
@@ -220,20 +212,23 @@ classdef pRF < handle
             range = max(self.stimulus(:))-mn;
             
             self.stimulus = (reshape(self.stimulus,...
-                self.r_image^2,self.n_samples)-mn)/range;
+                self.w_stimulus*self.h_stimulus,...
+                self.n_samples)-mn)/range;
             close(wb)
             fprintf('done\n');
         end
         
         function create_timecourses(self,varargin)
-            % creates predicted timecourses based on the effective stimulus
-            % and a range of isotropic receptive fields for a grid of
-            % location (x,y) and size parameters.
+            % creates predicted timecourses based on the effective stimulus and a range of isotropic receptive fields. 
+            % Isotropic receptive fields are generated for a grid of location (x,y) and size parameters.
             %
             % optional inputs are
-            %  - min_XY     : lower bound of x & y location   (default = -10.0)
-            %  - max_XY     : upper bound of x & y location   (default =  10.0)
-            %  - number_XY  : steps from lower to upper bound (default =  30.0)
+            %  - min_X      : lower bound of x location       (default = -10.0)
+            %  - max_X      : upper bound of x location       (default =  10.0)
+            %  - number_X   : steps from lower to upper bound (default =  30.0)
+            %  - min_Y      : lower bound of y location       (default = -10.0)
+            %  - max_Y      : upper bound of y location       (default =  10.0)
+            %  - number_Y   : steps from lower to upper bound (default =  30.0)
             %  - min_size   : lower bound of RF size          (default =   0.2)
             %  - max_size   : upper bound of RF size          (default =   7.0)
             %  - number_size: steps from lower to upper bound (default =  10.0)
@@ -243,41 +238,51 @@ classdef pRF < handle
             wb = waitbar(0,text,'Name',self.is);
             
             p = inputParser;
-            addOptional(p,'number_XY',30);
-            addOptional(p,'min_XY',-10);
-            addOptional(p,'max_XY',10);
+            addOptional(p,'number_X',30);
+            addOptional(p,'min_X',-10);
+            addOptional(p,'max_X',10);
+            addOptional(p,'number_Y',30);
+            addOptional(p,'min_Y',-10);
+            addOptional(p,'max_Y',10);
             addOptional(p,'number_size',10);
             addOptional(p,'min_size',0.2);
             addOptional(p,'max_size',7);
             p.parse(varargin{:});
             
-            n_xy = p.Results.number_XY;
-            min_xy = p.Results.min_XY;
-            max_xy = p.Results.max_XY;
+            n_x = p.Results.number_X;
+            min_x = p.Results.min_X;
+            max_x = p.Results.max_X;
+            n_y = p.Results.number_Y;
+            min_y = p.Results.min_Y;
+            max_y = p.Results.max_Y;
             n_size = p.Results.number_size;
             min_size = p.Results.min_size;
             max_size = p.Results.max_size;
-            self.n_points = n_xy^2*n_size;
+            self.n_points = n_x*n_y*n_size;
             
-            [X,Y] = meshgrid(linspace(min_xy,...
-                max_xy,self.r_image));
+            X_ = ones(self.h_stimulus,1) * linspace(min_x,...
+                max_x,self.w_stimulus);
+            Y_ = -linspace(min_y,max_y,...
+                self.h_stimulus)' * ones(1,self.w_stimulus);
             
-            X = reshape(X,self.r_image^2,1);
-            Y = -reshape(Y,self.r_image^2,1);
+            X_ = reshape(X_,self.w_stimulus*self.h_stimulus,1);
+            Y_ = reshape(Y_,self.w_stimulus*self.h_stimulus,1);
             
             i = (0:self.n_points-1)';
-            self.idx = [floor(i/(n_xy*n_size))+1,...
-                mod(floor(i/(n_size)),n_xy)+1,...
+            self.idx = [floor(i/(n_y*n_size))+1,...
+                mod(floor(i/(n_size)),n_y)+1,...
                 mod(i,n_size)+1];
-            self.XY = linspace(min_xy,max_xy,n_xy);
+            self.X = linspace(min_x,max_x,n_x);
+            self.Y = linspace(min_y,max_y,n_y);
             self.Sigma = linspace(min_size,max_size,n_size);
             
-            W = single(zeros(self.n_points,self.r_image^2));
+            W = single(zeros(self.n_points,...
+                self.w_stimulus*self.h_stimulus));
             for j=1:self.n_points
-                x = self.XY(self.idx(j,1));
-                y = self.XY(self.idx(j,2));
+                x = self.X(self.idx(j,1));
+                y = self.Y(self.idx(j,2));
                 sigma = self.Sigma(self.idx(j,3));
-                W(j,:) = self.gauss(x,y,sigma,X,Y)';
+                W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
                 waitbar(j/self.n_points*.9,wb);
             end
             
@@ -298,8 +303,7 @@ classdef pRF < handle
             %  - Eccentricity
             %  - Polar_Angle
             %
-            % each field is 3-dimensional corresponding to the volumetric
-            % dimensions of the data.
+            % each field is 3-dimensional corresponding to the volumetric dimensions of the data.
             %
             % required inputs are
             %  - data     : a 4-dimensional matrix of empirically observed
@@ -346,8 +350,8 @@ classdef pRF < handle
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
                         [results.R(v),j] = max(CS);
-                        results.X(v) = self.XY(self.idx(j,1));
-                        results.Y(v) = self.XY(self.idx(j,2));
+                        results.X(v) = self.X(self.idx(j,1));
+                        results.Y(v) = self.Y(self.idx(j,2));
                         results.Sigma(v) = self.Sigma(self.idx(j,3));
                     end
                     waitbar(v/numXYZ,wb)
@@ -357,6 +361,7 @@ classdef pRF < handle
                             zeros(self.n_samples-self.l_hrf,numXYZ)]);
                 for v=1:numXYZ
                     if mean_signal(v)>threshold
+                        tic
                         hrf_fft = repmat(hrf_fft_all(:,v),...
                             [1,self.n_points]);
                         tc = zscore(ifft(self.tc_fft.*hrf_fft))';
@@ -367,9 +372,10 @@ classdef pRF < handle
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
                         [results.R(v),j] = max(CS);
-                        results.X(v) = self.XY(self.idx(j,1));
-                        results.Y(v) = self.XY(self.idx(j,2));
+                        results.X(v) = self.X(self.idx(j,1));
+                        results.Y(v) = self.Y(self.idx(j,2));
                         results.Sigma(v) = self.Sigma(self.idx(j,3));
+                        toc
                     end
                     waitbar(v/numXYZ,wb)
                 end
