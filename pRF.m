@@ -25,10 +25,10 @@ classdef pRF < handle
     %
     % Population receptive field (pRF) mapping tool.
     %
-    % prf = pRF(scan_params) creates an instance of the pRF class.
-    % scan_params is a structure with 7 required fields
+    % prf = pRF(params) creates an instance of the pRF class.
+    % params is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
-    %   - n_samples : number of samples (volumes/TRs)
+    %   - n_samples : number of samples (volumes)
     %   - n_rows    : number of rows (in-plane resolution)
     %   - n_cols    : number of columns (in-plance resolution)
     %   - n_slices  : number of slices
@@ -52,10 +52,11 @@ classdef pRF < handle
     %   - pRF.create_timecourses();
     %   - results = pRF.mapping(data);
     %
-    % use help pRF.function to get more detailed help on any specific function (e.g. help pRF.mapping)
+    % use help pRF.function to get more detailed help on any specific function 
+    % (e.g. help pRF.mapping)
     %
     % typical workflow:
-    % 1. prf = pRF(scan_params);
+    % 1. prf = pRF(params);
     % 2. prf.import_stimulus();
     % 3. prf.create_timecourses();
     % 4. results = prf.mapping(data);
@@ -91,13 +92,13 @@ classdef pRF < handle
     
     methods (Access = public)
         
-        function self = pRF(scan_params,varargin)
+        function self = pRF(params,varargin)
             % constructor
             addpath(pwd)
             p = inputParser;
-            addRequired(p,'scan_params',@isstruct);
+            addRequired(p,'params',@isstruct);
             addOptional(p,'hrf',[]);
-            p.parse(scan_params,varargin{:});
+            p.parse(params,varargin{:});
             
             self.is = 'pRF mapping tool';
             
@@ -106,15 +107,15 @@ classdef pRF < handle
             self.gauss = @(mu_x,mu_y,sigma,X,Y) exp(-((X-mu_x).^2+...
                 (Y-mu_y).^2)/(2*sigma^2));
             
-            self.f_sampling = p.Results.scan_params.f_sampling;
+            self.f_sampling = p.Results.params.f_sampling;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = p.Results.scan_params.n_samples;
-            self.n_rows = p.Results.scan_params.n_rows;
-            self.n_cols = p.Results.scan_params.n_cols;
-            self.n_slices = p.Results.scan_params.n_slices;
+            self.n_samples = p.Results.params.n_samples;
+            self.n_rows = p.Results.params.n_rows;
+            self.n_cols = p.Results.params.n_cols;
+            self.n_slices = p.Results.params.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
-            self.w_stimulus = p.Results.scan_params.w_stimulus;
-            self.h_stimulus = p.Results.scan_params.h_stimulus;
+            self.w_stimulus = p.Results.params.w_stimulus;
+            self.h_stimulus = p.Results.params.h_stimulus;
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
                 if ndims(p.Results.hrf)==4
@@ -144,7 +145,7 @@ classdef pRF < handle
         end
         
         function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of dimensions width-by-height-by-time.
+            % returns the stimulus used by the class as a 3D matrix of dimensions height-by-width-by-time.
             stimulus = reshape(self.stimulus,self.h_stimulus,...
                 self.w_stimulus,self.n_samples);
         end
@@ -170,7 +171,7 @@ classdef pRF < handle
         function set_stimulus(self,stimulus)
             % provide a stimulus matrix.
             % This is useful if the .png files have already been imported and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D (width-by-height-by-time) or 2D (width*height-by-time).
+            % Note that the provided stimulus matrix can be either 3D (height-by-width-by-time) or 2D (height*width-by-time).
             if ndims(stimulus==3)
                 self.stimulus = reshape(stimulus,...
                     self.w_stimulus*self.h_stimulus,...
@@ -182,7 +183,7 @@ classdef pRF < handle
         
         function import_stimulus(self)
             % imports the series of .png files constituting the stimulation protocol of the pRF experiment.
-            % This series is stored internally in a matrix format (width-by-height-by-time).
+            % This series is stored internally in a matrix format (height-by-width-by-time).
             % The stimulus is required to generate timecourses.
             
             [~,path] = uigetfile('*.png',...
@@ -308,7 +309,7 @@ classdef pRF < handle
             % required inputs are
             %  - data     : a 4-dimensional matrix of empirically observed
             %                BOLD timecourses. Columns correspond to time
-            %                (volumes/TRs).
+            %                (volumes).
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
             
@@ -324,18 +325,16 @@ classdef pRF < handle
             data = p.Results.data;
             threshold = p.Results.threshold;
             
-            [~,numX,numY,numZ] = size(data);
-            numXYZ = numX * numY *numZ;
             data = reshape(data(1:self.n_samples,:,:,:),...
-                self.n_samples,numXYZ);
+                self.n_samples,self.n_total);
             mean_signal = mean(data);
             data = zscore(data);
             mag_d = sqrt(sum(data.^2));
             
-            results.R = zeros(numXYZ,1);
-            results.X = NaN(numXYZ,1);
-            results.Y = NaN(numXYZ,1);
-            results.Sigma = NaN(numXYZ,1);
+            results.R = zeros(self.n_total,1);
+            results.X = NaN(self.n_total,1);
+            results.Y = NaN(self.n_total,1);
+            results.Sigma = NaN(self.n_total,1);
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -343,7 +342,7 @@ classdef pRF < handle
                     [1,self.n_points]));
                 tc = zscore(ifft(self.tc_fft.*hrf_fft))';
                 mag_tc = sqrt(sum(tc.^2,2));
-                for v=1:numXYZ
+                for v=1:self.n_total
                     if mean_signal(v)>threshold
                         CS = (tc*data(:,v))./...
                             (mag_tc*mag_d(v));
@@ -354,14 +353,13 @@ classdef pRF < handle
                         results.Y(v) = self.Y(self.idx(j,2));
                         results.Sigma(v) = self.Sigma(self.idx(j,3));
                     end
-                    waitbar(v/numXYZ,wb)
+                    waitbar(v/self.n_total,wb)
                 end
             else
                 hrf_fft_all = fft([self.hrf;...
-                            zeros(self.n_samples-self.l_hrf,numXYZ)]);
-                for v=1:numXYZ
+                            zeros(self.n_samples-self.l_hrf,self.n_total)]);
+                for v=1:self.n_total
                     if mean_signal(v)>threshold
-                        tic
                         hrf_fft = repmat(hrf_fft_all(:,v),...
                             [1,self.n_points]);
                         tc = zscore(ifft(self.tc_fft.*hrf_fft))';
@@ -375,15 +373,14 @@ classdef pRF < handle
                         results.X(v) = self.X(self.idx(j,1));
                         results.Y(v) = self.Y(self.idx(j,2));
                         results.Sigma(v) = self.Sigma(self.idx(j,3));
-                        toc
                     end
-                    waitbar(v/numXYZ,wb)
+                    waitbar(v/self.n_total,wb)
                 end
             end
-            results.R = reshape(results.R,numX,numY,numZ);
-            results.X = reshape(results.X,numX,numY,numZ);
-            results.Y = reshape(results.Y,numX,numY,numZ);
-            results.Sigma = reshape(results.Sigma,numX,numY,numZ);
+            results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
+            results.X = reshape(results.X,self.n_rows,self.n_cols,self.n_slices);
+            results.Y = reshape(results.Y,self.n_rows,self.n_cols,self.n_slices);
+            results.Sigma = reshape(results.Sigma,self.n_rows,self.n_cols,self.n_slices);
             results.Eccentricity = abs(results.X+results.Y*1i);
             results.Polar_Angle = angle(results.X+results.Y*1i);
             close(wb)
