@@ -82,9 +82,9 @@ classdef pRF < handle
         w_stimulus
         h_stimulus
         idx
-        X
-        Y
-        Sigma
+        ecc
+        pa
+        slope
         hrf
         stimulus
         tc_fft
@@ -161,11 +161,12 @@ classdef pRF < handle
             % replace the hemodynamic response with a new hrf column vector
             % or a 4-dimensional matrix with columns corresponding to time.
             % Dimensions 2, 3 and 4 need to match those of the BOLD data.
+            self.l_hrf = size(hrf,1);
             if ndims(hrf)==4
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
             else
                 self.hrf = hrf;
-            end
+            end 
         end
         
         function set_stimulus(self,stimulus)
@@ -224,65 +225,57 @@ classdef pRF < handle
             % Isotropic receptive fields are generated for a grid of location (x,y) and size parameters.
             %
             % optional inputs are
-            %  - min_X      : lower bound of x location       (default = -10.0)
-            %  - max_X      : upper bound of x location       (default =  10.0)
-            %  - number_X   : steps from lower to upper bound (default =  30.0)
-            %  - min_Y      : lower bound of y location       (default = -10.0)
-            %  - max_Y      : upper bound of y location       (default =  10.0)
-            %  - number_Y   : steps from lower to upper bound (default =  30.0)
-            %  - min_size   : lower bound of RF size          (default =   0.2)
-            %  - max_size   : upper bound of RF size          (default =   7.0)
-            %  - number_size: steps from lower to upper bound (default =  10.0)
+            %  - max_R       : radius of the field of fiew     (default =  10.0)
+            %  - number_XY   : steps in x and y direction      (default =  30.0)
+            %  - min_slope   : lower bound of RF size slope    (default =   0.1)
+            %  - max_slope   : upper bound of RF size slope    (default =   1.2)
+            %  - number_slope: steps from lower to upper bound (default =  10.0)
             
             text = 'creating timecourses...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
             p = inputParser;
-            addOptional(p,'number_X',30);
-            addOptional(p,'min_X',-10);
-            addOptional(p,'max_X',10);
-            addOptional(p,'number_Y',30);
-            addOptional(p,'min_Y',-10);
-            addOptional(p,'max_Y',10);
-            addOptional(p,'number_size',10);
-            addOptional(p,'min_size',0.2);
-            addOptional(p,'max_size',7);
+            addOptional(p,'number_XY',30);
+            addOptional(p,'max_R',10);
+            addOptional(p,'number_slope',10);
+            addOptional(p,'min_slope',0.1);
+            addOptional(p,'max_slope',1.2);
             p.parse(varargin{:});
             
-            n_x = p.Results.number_X;
-            min_x = p.Results.min_X;
-            max_x = p.Results.max_X;
-            n_y = p.Results.number_Y;
-            min_y = p.Results.min_Y;
-            max_y = p.Results.max_Y;
-            n_size = p.Results.number_size;
-            min_size = p.Results.min_size;
-            max_size = p.Results.max_size;
-            self.n_points = n_x*n_y*n_size;
+            n_xy = p.Results.number_XY;
+            max_r = p.Results.max_R;
+            n_slope = p.Results.number_slope;
+            min_slope = p.Results.min_slope;
+            max_slope = p.Results.max_slope;
+            self.n_points = n_xy^2 * n_slope;
             
-            X_ = ones(self.h_stimulus,1) * linspace(min_x,...
-                max_x,self.w_stimulus);
-            Y_ = -linspace(min_y,max_y,...
+            X_ = ones(self.h_stimulus,1) * linspace(-max_r,...
+                max_r,self.w_stimulus);
+            Y_ = -linspace(-max_r,max_r,...
                 self.h_stimulus)' * ones(1,self.w_stimulus);
             
             X_ = reshape(X_,self.w_stimulus*self.h_stimulus,1);
             Y_ = reshape(Y_,self.w_stimulus*self.h_stimulus,1);
             
             i = (0:self.n_points-1)';
-            self.idx = [floor(i/(n_y*n_size))+1,...
-                mod(floor(i/(n_size)),n_y)+1,...
-                mod(i,n_size)+1];
-            self.X = linspace(min_x,max_x,n_x);
-            self.Y = linspace(min_y,max_y,n_y);
-            self.Sigma = linspace(min_size,max_size,n_size);
+            self.idx = [floor(i/(n_xy*n_slope))+1,...
+                mod(floor(i/(n_slope)),n_xy)+1,...
+                mod(i,n_slope)+1];
+            
+            n_lower = ceil(n_xy/2); 
+            n_upper = floor(n_xy/2); 
+            self.ecc = exp([linspace(log(max_r),log(.1),n_lower),...
+                linspace(log(.1),log(max_r),n_upper)]);
+            self.pa = linspace(0,(n_xy-1)/n_xy*2*pi,n_xy);
+            self.slope = linspace(min_slope,max_slope,n_slope);
             
             W = single(zeros(self.n_points,...
                 self.w_stimulus*self.h_stimulus));
             for j=1:self.n_points
-                x = self.X(self.idx(j,1));
-                y = self.Y(self.idx(j,2));
-                sigma = self.Sigma(self.idx(j,3));
+                x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                y = sin(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                sigma = self.ecc(self.idx(j,2)) * self.slope(self.idx(j,3));
                 W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
                 waitbar(j/self.n_points*.9,wb);
             end
@@ -332,9 +325,9 @@ classdef pRF < handle
             mag_d = sqrt(sum(data.^2));
             
             results.R = zeros(self.n_total,1);
-            results.X = NaN(self.n_total,1);
-            results.Y = NaN(self.n_total,1);
-            results.Sigma = NaN(self.n_total,1);
+            results.X = zeros(self.n_total,1);
+            results.Y = zeros(self.n_total,1);
+            results.Sigma = zeros(self.n_total,1);
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -349,9 +342,12 @@ classdef pRF < handle
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
                         [results.R(v),j] = max(CS);
-                        results.X(v) = self.X(self.idx(j,1));
-                        results.Y(v) = self.Y(self.idx(j,2));
-                        results.Sigma(v) = self.Sigma(self.idx(j,3));
+                        results.X(v) = cos(self.pa(self.idx(j,1))) * ...
+                            self.ecc(self.idx(j,2));
+                        results.Y(v) = sin(self.pa(self.idx(j,1))) * ...
+                            self.ecc(self.idx(j,2));
+                        results.Sigma(v) = self.ecc(self.idx(j,2)) * ...
+                            self.slope(self.idx(j,3));
                     end
                     waitbar(v/self.n_total,wb)
                 end
@@ -370,9 +366,12 @@ classdef pRF < handle
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
                         [results.R(v),j] = max(CS);
-                        results.X(v) = self.X(self.idx(j,1));
-                        results.Y(v) = self.Y(self.idx(j,2));
-                        results.Sigma(v) = self.Sigma(self.idx(j,3));
+                        results.X(v) = cos(self.pa(self.idx(j,1))) * ...
+                            self.ecc(self.idx(j,2));
+                        results.Y(v) = sin(self.pa(self.idx(j,1))) * ...
+                            self.ecc(self.idx(j,2));
+                        results.Sigma(v) = self.ecc(self.idx(j,2)) * ...
+                            self.slope(self.idx(j,3));
                     end
                     waitbar(v/self.n_total,wb)
                 end
