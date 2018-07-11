@@ -78,7 +78,7 @@ classdef PEA < handle
             % constructor
             addpath(pwd)
             
-            self.is = 'PEA fitting tool';
+            self.is = 'PEA tool';
             
             self.f_sampling = params.f_sampling;
             self.f_stim = params.f_stim;
@@ -118,18 +118,17 @@ classdef PEA < handle
         
         function set_direction(self,direction)
             % provide a direction of motion for the class. 
-            % This can be either numeric (-1,1) or in form of a string 
-            % ('cw','ccw') for clockwise and counterclockwise rotation,
-            % respectively. Contracting rings are also consider to move
-            % clockwise (-1) while expanding rings are considered 
-            % to move counterclockwise (1).
+            % This can be either numeric (-1,1) or in form of a string ('cw','ccw') 
+            % for clockwise and counterclockwise rotation, respectively. 
+            % Contracting rings are also considered to move clockwise (-1) 
+            % while expanding rings are considered to move counterclockwise (1).
             if isnumeric(direction)
                 self.direction = direction;
             else
                 if strcmp(direction,'cw')
-                    self.direction = 1;
-                else
                     self.direction = -1;
+                else
+                    self.direction = 1;
                 end
                 
             end
@@ -138,38 +137,55 @@ classdef PEA < handle
         function results = fitting(self,data)
             % identifies phase and amplitude at stimulation frequency for each voxel and
             % returns a structure with the following fields
-            %  - phase
-            %  - amplitude
+            %  - Phase
+            %  - Amplitude
+            %  - F_statistic
+            %  - P_value
             %
-            % each field is 3-dimensional corresponding to the volumetric dimensions of the data.
+            % the dimension of each field corresponds to the dimension of the data.
             %
             % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed
-            %                BOLD timecourses. Columns correspond to time
-            %                (volumes).
+            %  - data     : a 4-dimensional matrix of empirically observed BOLD timecourses. 
+            %               Columns correspond to time (volumes).
             
-            text = 'performing phase-encoding analysis...';
+            text = 'performing phase encoding analysis...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
             F = exp(self.direction*2i*pi*self.f_stim*(self.t-self.delay));
-            size(F)
+            X = zscore([real(F)',imag(F)']);
+            XX = (X'*X)\X';
             data = zscore(reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
             
-            results.phase = zeros(self.n_total,1);
-            results.amplitude = zeros(self.n_total,1);
+            results.Phase = zeros(self.n_total,1);
+            results.Amplitude = zeros(self.n_total,1);
+            results.F_stat = zeros(self.n_total,1);
+            results.P_value = zeros(self.n_total,1);
             
+            df1 = 2;
+            df2 = self.n_samples-1;
             for v=1:self.n_total
-                C = F * data(:,v);
-                results.phase(v) = angle(C);
-                results.amplitude(v) = abs(C);
+                b = XX * data(:,v);
+                y = X*b;
+                y_ = mean(y);
+                MSM = (y-y_)'*(y-y_)/df1;
+                MSE = (y-data(:,v))'*(y-data(:,v))/df2;
+                
+                results.Phase(v) = angle(b(1)+b(2)*1i);
+                results.Amplitude(v) = abs(b(1)+b(2)*1i);
+                results.F_stat(v) = MSM/MSE;
+                results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
                 waitbar(v/self.n_total,wb)
             end
             
-            results.phase = reshape(results.phase,...
+            results.Phase = reshape(results.Phase,...
                 self.n_rows,self.n_cols,self.n_slices);
-            results.amplitude = reshape(results.amplitude,...
+            results.Amplitude = reshape(results.Amplitude,...
+                self.n_rows,self.n_cols,self.n_slices);
+            results.F_stat = reshape(results.F_stat,...
+                self.n_rows,self.n_cols,self.n_slices);
+            results.P_value = reshape(results.P_value,...
                 self.n_rows,self.n_cols,self.n_slices);
             
             close(wb)
