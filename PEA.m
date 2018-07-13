@@ -117,10 +117,10 @@ classdef PEA < handle
         end
         
         function set_direction(self,direction)
-            % provide a direction of motion for the class. 
-            % This can be either numeric (-1,1) or in form of a string ('cw','ccw') 
-            % for clockwise and counterclockwise rotation, respectively. 
-            % Contracting rings are also considered to move clockwise (-1) 
+            % provide a direction of motion for the class.
+            % This can be either numeric (-1,1) or in form of a string ('cw','ccw')
+            % for clockwise and counterclockwise rotation, respectively.
+            % Contracting rings are also considered to move clockwise (-1)
             % while expanding rings are considered to move counterclockwise (1).
             if isnumeric(direction)
                 self.direction = direction;
@@ -145,7 +145,7 @@ classdef PEA < handle
             % the dimension of each field corresponds to the dimension of the data.
             %
             % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed BOLD timecourses. 
+            %  - data     : a 4-dimensional matrix of empirically observed BOLD timecourses.
             %               Columns correspond to time (volumes).
             
             text = 'performing phase encoding analysis...';
@@ -168,9 +168,21 @@ classdef PEA < handle
             for v=1:self.n_total
                 b = XX * data(:,v);
                 y = X*b;
+                
+                % estimate and correct for autocorrelation
+                r = y-data(:,v);
+                T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
+                W = [1; -((T'* T) \ T' * r)];
+                Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
+                Xc(:,2) = [X(:,2),[0;X(1:end-1,2)],[zeros(2,1);X(1:end-2,2)]] * W;
+                Dc = [data(:,v),[0;data(1:end-1,v)],[zeros(2,1);data(1:end-2,v)]] * W;
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+                b = (Xc' * Xc) \ Xc' * Dc;
+                y = Xc * b;
                 y_ = mean(y);
                 MSM = (y-y_)'*(y-y_)/df1;
-                MSE = (y-data(:,v))'*(y-data(:,v))/df2;
+                MSE = (y-data(:,v))'*(y-Dc)/df2;
                 
                 results.Phase(v) = angle(b(1)+b(2)*1i);
                 results.Amplitude(v) = abs(b(1)+b(2)*1i);
