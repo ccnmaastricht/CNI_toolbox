@@ -60,7 +60,7 @@ classdef RBA < handle
         f_sampling
         p_sampling
         n_samples
-        n_points
+        n_predictors
         n_rows
         n_cols
         n_slices
@@ -90,6 +90,7 @@ classdef RBA < handle
             self.f_sampling = params.f_sampling;
             self.p_sampling = 1/self.f_sampling;
             self.n_samples = params.n_samples;
+            self.n_predictors = 0;
             self.n_rows = params.n_rows;
             self.n_cols = params.n_cols;
             self.n_slices = params.n_slices;
@@ -124,102 +125,106 @@ classdef RBA < handle
             end
         end
         
-        function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of dimensions height-by-width-by-time.
-            stimulus = reshape(self.stimulus,self.h_stimulus,...
-                self.w_stimulus,self.n_samples);
-        end
-        
-        
         function design = get_design(self)
             % returns the design matrix.
             design = self.X;
         end
         
-        function filter = get_pyramid(self)
-            % not ready
-           filter = self.filter; 
-        end
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector.
             self.l_hrf = size(hrf,1);
             self.hrf = hrf;
-            
         end
         
-        function set_stimulus(self,stimulus)
-            % provide a stimulus matrix.
-            % This is useful if the .png files have already been imported and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D (height-by-width-by-time) or 2D (height*width-by-time).
-            if ndims(stimulus==3)
-                self.stimulus = reshape(stimulus,...
-                    self.w_stimulus*self.h_stimulus,...
-                    self.n_samples);
+        
+        function set_design(self,X,varargin)
+            % provide a t-by-p design matrix to the class with t timepoints
+            % and p predictors.
+            
+            p = inputParser;
+            addRequired(p,'X',@isnumeric);
+            addOptional(p,'convolve',false);
+            p.parse(X,varargin{:});
+            
+            c = p.Results.convolve;
+            self.n_predictors = size(p.Results.X,2);
+            if c
+                X_fft = fft(p.Results.X);
+                hrf_fft = fft(repmat([self.hrf;...
+                    zeros(self.n_samples-self.l_hrf,1)],...
+                    [1,self.n_predictors]));
+                self.X = zscore(ifft(X_fft.*hrf_fft));
             else
-                self.stimulus = stimulus;
+                self.X = zscore(p.Results.X);
             end
         end
         
-        function set_design(self,X)
-            % provide a t-by-p design matrix to the class with t timepoints
-            % and p predictors.
-            self.X = X;
-        end
-        
-        function import_stimulus(self)
-            % imports the series of .png files constituting the stimulation protocol of the pRF experiment.
-            % This series is stored internally in a matrix format (height-by-width-by-time).
-            % The stimulus is required to generate the design matrix.
+        function optimize_lambda(self,data)
             
-            [~,path] = uigetfile('*.png',...
-                'Please select the first .png file');
-            files = dir([path,'*.png']);
-            text = 'loading stimulus...';
+            text = 'optimizing lambda...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
-            im = imread([path,files(1).name]);
-            self.stimulus = zeros(self.h_stimulus,self.w_stimulus,...
-                self.n_samples);
-            self.stimulus(:,:,1) = im(:,:,1);
-            l = regexp(files(1).name,'\d')-1;
-            prefix = files(1).name(1:l);
-            name = {files.name};
-            str  = sprintf('%s#', name{:});
-            num  = sscanf(str, [prefix,'%d.png#']);
-            [~, index] = sort(num);
-            
-            for t=2:self.n_samples
-                im = imread([path,files(index(t)).name]);
-                self.stimulus(:,:,t) = im(:,:,1);
-                waitbar(t/self.n_samples,wb)
+            data = zscore(reshape(data(1:self.n_samples,:,:,:),...
+                self.n_samples,self.n_total));
+            K = 3:9;
+            if isprime(self.n_samples)
+                data(end,:) = [];
+                id = mod(self.n_samples-1,K)==0;
+                K = min(K(id));
+                if isempty(K)
+                    K = 2;
+                end
+                samples = (self.n_samples-1) / K;
+            else
+                id = mod(self.n_samples,K)==0;
+                K = min(K(id));
+                if isempty(K)
+                    K = 2;
+                end
+                samples = self.n_samples / K;
             end
-            mn = min(self.stimulus(:));
-            range = max(self.stimulus(:))-mn;
-            
-            self.stimulus = (reshape(self.stimulus,...
-                self.w_stimulus*self.h_stimulus,...
-                self.n_samples)-mn)/range;
-            close(wb)
-            fprintf('done\n');
+            fprintf(' using %i splits\n',K)
+            M = 0:5;
+            fit = zeros(6,self.n_total);
+            for u=1:6
+                for k=0:K-1
+                    s = k * samples+1 : k * samples + samples;
+                    tst_X = self.X;
+                    tst_X(s,:) = [];
+                    tst_data = data;
+                    tst_data(s,:) = [];
+                    trn_X(s,:) = self.X(s,:);
+                    trn_data = data(s,:);
+                    
+                    
+                    mag_d = sqrt(sum(tst_data.^2));
+                    
+                    if self.n_samples<self.n_predictors
+                        [U,D,V] = svd(trn_X,'econ');
+                        XX = V * inv(D^2 + ...
+                            10^M(u) * eye(samples)) * D * U';
+                    else
+                        XX = (trn_X'* trn_X + ...
+                            10^M(u) * eye(self.n_predictors)) \ trn_X';
+                    end
+                    
+                    for v=1:self.n_total
+                        b = XX * trn_data(:,v);
+                        y = tst_X * b;
+                        mag_y = sqrt(y'* y);
+                        fit(u,v) = fit(u,v) + ((y'* tst_data(:,v))...
+                            / (mag_y * mag_d(v))) / (K+1);
+                    end 
+                end
+                waitbar(u/6,wb)
+            end
+            [~,id] = max(mean(fit,2));
+            self.lambda = 10^M(id);
         end
         
-        function create_pyramid(self)
-            % not ready
-            sf = 2.^(1:5);
-            a = linsapce(0,7/8*pi,8);
-            
-        end
-        
-        function create_design(self)
-            % create a t-by-p design matrix to the class with t timepoints
-            % and p predictors based on filter responses to image stimuli
-        end
-        
-        
-        
-        function results = perform_ridge(self,data,lambda)
+        function results = perform_ridge(self,data,varargin)
             % performs ridge regression and returns a structure with the following fields
             %  - Beta
             %  - RSS
@@ -237,19 +242,28 @@ classdef RBA < handle
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
-            p = size(self.X,2);
-            X_fft = fft(self.X);
-            hrf_fft = fft(repmat([self.hrf;...
-                zeros(self.n_samples-self.l_hrf,1)],...
-                [1,p]));
-            x = zscore(ifft(X_fft.*hrf_fft));
-            [U,D,V] = svd(x,'econ');
-            XX = V * inv(D^2 + lambda * eye(self.n_samples)) * D * U';
+            p = inputParser;
+            addRequired(p,'data',@isnumeric);
+            addOptional(p,'lambda',[]);
+            p.parse(data,varargin{:});
             
+            data = p.Results.data;
+            if ~isempty(p.Results.lambda)
+                self.lambda = p.Results.lambda;
+            end
+            
+            if self.n_samples<self.n_predictors
+                [U,D,V] = svd(self.X,'econ');
+                XX = V * inv(D^2 + ...
+                    self.lambda * eye(self.n_samples)) * D * U';
+            else
+                XX = (self.X'* self.X + ...
+                    self.lambda * eye(self.n_predictors)) \ self.X';
+            end
             data = zscore(reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
             
-            results.Beta = single(zeros(p,self.n_total));
+            results.Beta = cell(self.n_rows,self.n_cols,self.n_slices);
             results.RSS = zeros(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
             results.P_value = zeros(self.n_total,1);
@@ -258,7 +272,7 @@ classdef RBA < handle
             df2 = self.n_samples-1;
             for v=1:self.n_total
                 b = XX * data(:,v);
-                y = x * b;
+                y = self.X * b;
                 y_ = mean(y);
                 MSM = (y-y_)'*(y-y_)/df1;
                 MSE = (y-data(:,v))'*(y-data(:,v))/df2;
@@ -270,7 +284,7 @@ classdef RBA < handle
                 waitbar(v/self.n_total,wb)
             end
             
-            results.Beta = reshape(results.Beta,p,...
+            results.Beta = reshape(results.Beta,self.n_predictors,...
                 self.n_rows,self.n_cols,self.n_slices);
             results.RSS = reshape(results.RSS,...
                 self.n_rows,self.n_cols,self.n_slices);
