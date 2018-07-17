@@ -68,6 +68,7 @@ classdef RBA < handle
         l_hrf
         hrf
         X
+        lambda
         
     end
     
@@ -233,10 +234,13 @@ classdef RBA < handle
             %
             % the dimension of each field corresponds to the dimension of the data.
             %
-            % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed BOLD timecourses.
+            % required input is
+            %  - data  : a 4-dimensional matrix of empirically observed BOLD timecourses.
             %               Columns correspond to time (volumes).
-            %  - lambda   : shrinkage parameter
+            %
+            % optional inputs are
+            %  - lambda: shrinkage parameter
+            %  - mask  : mask file for selecting voxels
             
             text = 'performing ridge regression...';
             fprintf('%s\n',text)
@@ -245,12 +249,14 @@ classdef RBA < handle
             p = inputParser;
             addRequired(p,'data',@isnumeric);
             addOptional(p,'lambda',[]);
+            addOptional(p,'mask',true(self.n_total,1));
             p.parse(data,varargin{:});
             
             data = p.Results.data;
             if ~isempty(p.Results.lambda)
                 self.lambda = p.Results.lambda;
             end
+            mask = reshape(p.Results.mask,self.n_total,1);
             
             if self.n_samples<self.n_predictors
                 [U,D,V] = svd(self.X,'econ');
@@ -266,26 +272,26 @@ classdef RBA < handle
             results.Beta = cell(self.n_rows,self.n_cols,self.n_slices);
             results.RSS = zeros(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
-            results.P_value = zeros(self.n_total,1);
+            results.P_value = ones(self.n_total,1);
             
             df1 = 2;
             df2 = self.n_samples-1;
             for v=1:self.n_total
+                if mask(v)
                 b = XX * data(:,v);
                 y = self.X * b;
                 y_ = mean(y);
                 MSM = (y-y_)'*(y-y_)/df1;
                 MSE = (y-data(:,v))'*(y-data(:,v))/df2;
                 
-                results.Beta(:,v) = b;
+                results.Beta{v} = b;
                 results.RSS(v) = (y-data(:,v))'*(y-data(:,v));
                 results.F_stat(v) = MSM/MSE;
                 results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
+                end
                 waitbar(v/self.n_total,wb)
             end
             
-            results.Beta = reshape(results.Beta,self.n_predictors,...
-                self.n_rows,self.n_cols,self.n_slices);
             results.RSS = reshape(results.RSS,...
                 self.n_rows,self.n_cols,self.n_slices);
             results.F_stat = reshape(results.F_stat,...
