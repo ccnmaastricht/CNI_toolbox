@@ -279,7 +279,7 @@ classdef pRF < handle
                 W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
                 waitbar(j/self.n_points*.9,wb);
             end
-            
+
             tc = W * self.stimulus;
             waitbar(1,wb);
             self.tc_fft = fft(tc');
