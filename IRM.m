@@ -26,7 +26,7 @@ classdef IRM < handle
     % Inpute-referred model (IRM) mapping tool.
     %
     % irm = IRM(params) creates an instance of the IRM class.
-    % params is a structure with 7 required fields
+    % params is a structure with 5 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
     %   - n_rows    : number of rows (in-plane resolution)
@@ -46,7 +46,6 @@ classdef IRM < handle
     %   - tc = IRM.get_timecourses();
     %   - IRM.set_hrf(hrf);
     %   - IRM.set_stimulus(stimulus);
-    %   - IRM.import_stimulus();
     %   - IRM.create_timecourses();
     %   - results = IRM.mapping(data);
     %
@@ -56,7 +55,8 @@ classdef IRM < handle
     % typical workflow:
     % 1. irm = IRM(params);
     % 2. irm.set_stimulus();
-    % 3. results = irm.mapping(data);
+    % 3. irm.create_timecourse(FUN,xdata);
+    % 4. results = irm.mapping(data);
     
     properties (Access = private)
         
@@ -73,9 +73,14 @@ classdef IRM < handle
         n_cols
         n_slices
         n_total
+        n_predictors
+        n_points
+        idx
         l_hrf
         hrf
         stimulus
+        xdata
+        tc_fft
     end
     
     methods (Access = public)
@@ -134,6 +139,12 @@ classdef IRM < handle
             stimulus = self.stimulus;
         end
         
+        function tc = get_timecourses(self)
+            % returns the timecourses predicted based on the stimulus protocol and each combination of the input-referred model parameters as a time-by-combinations matrix.
+            % Note that the predicted timecourses have not been convolved with a hemodynamic response.
+            tc = ifft(self.tc_fft);
+        end
+        
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
             % or a 4-dimensional matrix with columns corresponding to time.
@@ -151,49 +162,82 @@ classdef IRM < handle
             self.stimulus = stimulus;
         end
         
-        function mapping(self,data,FUN,xdata)
+        function create_timecourse(self,FUN,xdata)
+            % creates predicted timecourses based on the stimulus protocol and a range of parameters for an input referred model.
+            %
+            % required inputs are
+            % - FUN          : a function handle defining the input referred model
+            % - xdata        : an n-by-p matrix defining the parameter space with n values in p parameters
+            text = 'creating timecourses...';
+            fprintf('%s\n',text)
+            wb = waitbar(0,text,'Name',self.is);
+            
+            self.xdata = xdata;
+            [n_observations,self.n_predictors] = size(xdata);
+            self.n_points = n_observations^self.n_predictors;
+            i = (0:self.n_points-1)';
+            self.idx = zeros(self.n_points,self.n_predictors);
+            
+            for p=1:self.n_predictors
+                self.idx(:,p) = mod(floor(i/(n_observations^(self.n_predictors-p))),...
+                    n_observations) + 1;
+            end
+            
+            tc = zeros(self.n_samples,self.n_points);
+            x = zeros(self.n_predictors,1);
+            for j=1:self.n_points
+                
+                for p=1:self.n_predictors
+                    x(p) = xdata(self.idx(j,p),p);
+                end
+                tc(:,j) = FUN(self.stimulus,x);
+                waitbar(j/self.n_points,wb);
+            end
+            self.tc_fft = fft(tc);
+            close(wb)
+            fprintf('done\n');
+        end
+        
+        function results = mapping(self,data,varargin)
             % identifies the best fitting timecourse for each voxel and
             % returns the corresponding parameter values of the
             % input-referred model. The class returns a structure with two
             % fields.
-            %  - R: correlations (fit) - 3-dimensional matrix corresponding 
+            %  - R: correlations (fit) - 3-dimensional matrix corresponding
             %       to the volumetric dimensions of the data.
             %  - P: estimate parameters - 4-dimensional matrix. The first
             %       dimension corresponds to the parameters, the remaining
             %       three to the volume.
+            %
+            % required inputs are
+            %  - data     : a 4-dimensional matrix of empirically observed
+            %                BOLD timecourses. Columns correspond to time
+            %                (volumes).
+            % optional inputs are
+            %  - threshold: minimum voxel intensity (default = 100.0)
             
             
             text = 'mapping input-referred model...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
-            [n_observations,n_predictors] = size(xdata);
-            n_points = n_observations^n_predictors;
-            i = (0:n_points-1)';
-            idx = zeros(n_points,n_predictors);
             
-            for p=1:n_predictors
-                idx(:,p) = mod(floor(i/(n_observations^(n_predictors-p))),...
-                    n_observations) + 1;
-            end
+            p = inputParser;
+            addRequired(p,'data',@isnumeric);
+            addOptional(p,'threshold',100);
+            p.parse(data,varargin{:});
             
-            tc = zeros(self.n_samples,n_points);
-            x = zeros(n_predictors,1);
-            for j=1:self.n_points
-                
-                for p=1:n_predictors
-                    x(p) = xdata(idx(j,p),p);
-                end
-                tc(:,j) = FUN(self.stimulus,x);
-            end
-            self.tc_fft = fft(tc);
+            data = p.Results.data;
+            threshold = p.Results.threshold;
             
-            data = zscore(reshape(data(1:self.n_samples,:,:,:),...
-                self.n_samples,self.n_total));
+            data = reshape(data(1:self.n_samples,:,:,:),...
+                self.n_samples,self.n_total);
+            mean_signal = mean(data);
+            data = zscore(data);
             mag_d = sqrt(sum(data.^2));
             
             results.R = zeros(self.n_total,1);
-            results.P = zeros(self.n_total,n_predictors);
+            results.P = zeros(self.n_total,self.n_predictors);
             
             
             if size(self.hrf,2)==1
@@ -201,45 +245,50 @@ classdef IRM < handle
                     zeros(self.n_samples-self.l_hrf,1)],...
                     [1,self.n_points]));
                 tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                
                 mag_tc = sqrt(sum(tc.^2,2));
                 for v=1:self.n_total
-                    CS = (tc*data(:,v))./...
-                        (mag_tc*mag_d(v));
-                    id = isinf(CS) | isnan(CS);
-                    CS(id) = 0;
-                    [results.R(v),j] = max(CS);
-                    for p=1:n_predictors
-                        results.X(v,p) = xdata(idx(j,p),p);
+                    if mean_signal(v)>threshold
+                        CS = (tc*data(:,v))./...
+                            (mag_tc*mag_d(v));
+                        id = isinf(CS) | isnan(CS);
+                        CS(id) = 0;
+                        [results.R(v),j] = max(CS);
+                        for p=1:self.n_predictors
+                            results.P(v,p) = self.xdata(self.idx(j,p),p);
+                        end
                     end
-
                     waitbar(v/self.n_total,wb)
                 end
             else
                 hrf_fft_all = fft([self.hrf;...
                     zeros(self.n_samples-self.l_hrf,self.n_total)]);
                 for v=1:self.n_total
-                    hrf_fft = repmat(hrf_fft_all(:,v),...
-                        [1,self.n_points]);
-                    tc = zscore(ifft(self.tc_fft.*hrf_fft))';
-                    mag_tc = sqrt(sum(tc.^2,2));
-                    
-                    CS = (tc*data(:,v))./...
-                        (mag_tc*mag_d(v));
-                    id = isinf(CS) | isnan(CS);
-                    CS(id) = 0;
-                    [results.R(v),j] = max(CS);
-                    for p=1:n_predictors
-                        results.X(v,p) = xdata(idx(j,p),p);
+                    if mean_signal(v)>threshold
+                        hrf_fft = repmat(hrf_fft_all(:,v),...
+                            [1,self.n_points]);
+                        tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                        mag_tc = sqrt(sum(tc.^2,2));
+                        
+                        CS = (tc*data(:,v))./...
+                            (mag_tc*mag_d(v));
+                        id = isinf(CS) | isnan(CS);
+                        CS(id) = 0;
+                        [results.R(v),j] = max(CS);
+                        for p=1:self.n_predictors
+                            results.P(v,p) = self.xdata(self.idx(j,p),p);
+                        end
                     end
-                    
                     waitbar(v/self.n_total,wb)
                 end
             end
             results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
-            results.P = reshape(n_predictors,results.X,self.n_rows,self.n_cols,self.n_slices);
+            results.P = squeeze(...
+                reshape(...
+                results.P,self.n_rows,self.n_cols,self.n_slices,self.n_predictors));
             close(wb)
             fprintf('done\n');
         end
-
+        
     end
 end
