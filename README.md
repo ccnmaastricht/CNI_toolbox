@@ -8,6 +8,15 @@ The latest version may always be found here.
 This software requires MATLAB R2017a or later. It was developed with access to the full suite of MATLAB add-on packages.
 Some of these packages may be required to run the software.
 
+## Installation
+There are two options for installing the toolbox. Either download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/MSenden/CNI_toolbox/raw/master/Computational%20Neuroimaging%20Toolbox.mltbx), navigate to the downloaded file within matlab and then execute the following command:
+
+```Matlab
+matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx');
+```
+
+Alternatively, download the compressed toolbox [Computational Neuroimaging Toolbox.zip](https://github.com/MSenden/CNI_toolbox/raw/master/Computational%20Neuroimaging%20Toolbox.zip) and extract it into Documents/MATLAB/Add-Ons/Toolboxes.
+
 ## Files
 This repository contains four files.
 1. PEA.m: a MATLAB class implementation of Fourier analysis of phase-encoded stimuli.
