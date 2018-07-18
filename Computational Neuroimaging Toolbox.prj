@@ -13,8 +13,28 @@
     <param.products.id />
     <param.products.version />
     <param.platforms />
-    <param.guid>2d96161d-cfb2-48de-b393-a4dd3a02b1bd</param.guid>
-    <param.exclude.filters />
+    <param.guid>53027810-a4c4-4ea6-80ce-583caf567798</param.guid>
+    <param.exclude.filters>% List files contained in your toolbox folder that you would like to exclude
+% from packaging.  Excludes should be listed relative to the toolbox folder.
+% Some examples of how to specify excludes are provided below:
+%
+% A single file in the toolbox folder:
+% .svn
+%
+% A single file in a subfolder of the toolbox folder:
+% example/.svn
+%
+% All files in a subfolder of the toolbox folder:
+% example/*
+%
+% All files of a certain name in all subfolders of the toolbox folder:
+% **/.svn
+%
+% All files matching a pattern in all subfolders of the toolbox folder:
+% **/*.bak
+%
+*~
+*.zip</param.exclude.filters>
     <param.examples />
     <param.demosxml />
     <param.apps />
@@ -29,7 +49,6 @@
       <param.products.id />
       <param.products.version />
       <param.platforms />
-      <param.exclude.filters />
       <param.examples />
       <param.demosxml />
       <param.apps />
