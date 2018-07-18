@@ -5,8 +5,7 @@ The Computational Neuroimaging Toolbox is a MATLAB toolbox for estimating input-
 This code is hosted at https://github.com/MSenden/CNI_toolbox
 The latest version may always be found here.
 
-This software requires MATLAB R2017a or later. It was developed with access to the full suite of MATLAB add-on packages.
-Some of these packages may be required to run the software.
+This software was developed with MATLAB R2017a and access to the full suite of MATLAB add-on packages. Some of these packages may be required to run the software.
 
 ## Installation
 There are two options for installing the toolbox. Either download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/MSenden/CNI_toolbox/raw/master/Computational%20Neuroimaging%20Toolbox.mltbx), navigate to the downloaded file within matlab and then execute the following command:
