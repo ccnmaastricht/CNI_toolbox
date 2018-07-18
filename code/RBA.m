@@ -192,7 +192,7 @@ classdef RBA < handle
                 self.n_samples,self.n_total));
             data = data(:,mask);
             numV = size(data,2);
-            K = 3:9;
+            K = 2:7;
             if isprime(self.n_samples)
                 data(end,:) = [];
                 id = mod(self.n_samples-1,K)==0;
@@ -217,21 +217,21 @@ classdef RBA < handle
                 fprintf('-->lambda = %.2f\n',range(i))
                 
                 for k=0:K-1
-                    fprintf('--->split = %i\n',k+1)
+                    fprintf('--->split %i\n',k+1)
                     s = k * samples+1 : k * samples + samples;
-                    tst_X = self.X;
-                    tst_X(s,:) = [];
-                    tst_data = data;
-                    tst_data(s,:) = [];
-                    trn_X = self.X(s,:);
-                    trn_data = data(s,:);
+                    trn_X = self.X;
+                    trn_X(s,:) = [];
+                    trn_data = data;
+                    trn_data(s,:) = [];
+                    tst_X = self.X(s,:);
+                    tst_data = data(s,:);
                     
                     mag_d = sqrt(sum(tst_data.^2));
                     
                     if self.n_samples<self.n_predictors
                         [U,D,V] = svd(trn_X,'econ');
                         XX = V * inv(D^2 + ...
-                            range(i) * eye(samples)) * D * U';
+                            range(i) * eye(samples * (K-1))) * D * U';
                     else
                         XX = (trn_X'* trn_X + ...
                             range(i) * eye(self.n_predictors)) \ trn_X';
@@ -240,7 +240,7 @@ classdef RBA < handle
                     for v=1:numV
                         b = XX * trn_data(:,v);
                         y = tst_X * b;
-                        mag_y = sqrt(y'* y);
+                        mag_y = sqrt(y' * y);
                         fit(i,v) = fit(i,v) + ((y'* tst_data(:,v))...
                             / (mag_y * mag_d(v)) - fit(i,v)) / (K+1);
                         waitbar(((i-1) * numV * K +...
@@ -275,9 +275,9 @@ classdef RBA < handle
             %  - lambda: shrinkage parameter
             %  - mask  : mask file for selecting voxels
             
-            text = fprintf('performing ridge regression with lambda = %.2f',self.lambda);
-            fprintf('%s...\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            text = 'performing ridge regression';
+            fprintf('%s with lambda = %.2f...\n',text, self.lambda)
+            wb = waitbar(0,sprintf('%s...',text),'Name',self.is);
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
