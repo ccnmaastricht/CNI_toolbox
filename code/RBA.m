@@ -191,7 +191,7 @@ classdef RBA < handle
             data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
             data = data(:,mask);
-            numV = size(data,2)
+            numV = size(data,2);
             K = 3:9;
             if isprime(self.n_samples)
                 data(end,:) = [];
@@ -275,8 +275,8 @@ classdef RBA < handle
             %  - lambda: shrinkage parameter
             %  - mask  : mask file for selecting voxels
             
-            text = 'performing ridge regression with lambda = ...';
-            fprintf('%s%.2f\n',text,self.lambda)
+            text = fprintf('performing ridge regression with lambda = %.2f',self.lambda);
+            fprintf('%s...\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
             p = inputParser;
