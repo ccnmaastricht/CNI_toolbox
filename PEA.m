@@ -37,7 +37,7 @@ classdef PEA < handle
     % this class has the following function
     %
     %   - delay = PEA.get_delay();
-    %   - direction = PEA.get_direction(direction);
+    %   - direction = PEA.get_direction();
     %   - PEA.set_delay(delay);
     %   - PEA.set_direction(direction);
     %   - results = PEA.fitting(data);
@@ -76,8 +76,6 @@ classdef PEA < handle
         
         function self = PEA(params)
             % constructor
-            addpath(pwd)
-            
             self.is = 'PEA tool';
             
             self.f_sampling = params.f_sampling;
@@ -135,18 +133,19 @@ classdef PEA < handle
         end
         
         function results = fitting(self,data)
-            % identifies phase and amplitude at stimulation frequency for each voxel and
-            % returns a structure with the following fields
+            % identifies phase and amplitude at stimulation frequency for 
+            % each voxel and returns a structure with the following fields
             %  - Phase
             %  - Amplitude
             %  - F_statistic
             %  - P_value
             %
-            % the dimension of each field corresponds to the dimension of the data.
+            % the dimension of each field corresponds to the dimensions of 
+            % the data.
             %
             % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed BOLD timecourses.
-            %               Columns correspond to time (volumes).
+            %  - data  : a matrix of empirically observed BOLD timecourses
+            %            whose columns correspond to time (volumes).
             
             text = 'performing phase encoding analysis...';
             fprintf('%s\n',text)

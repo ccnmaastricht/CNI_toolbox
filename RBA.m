@@ -23,32 +23,41 @@ classdef RBA < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-    % Model free mapping tool.
+    % Ridge-based analysis tool.
     %
     % rba = RBA(params) creates an instance of the RBA class.
-    % params is a structure with 7 required fields
+    % params is a structure with 5 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
     %   - n_rows    : number of rows (in-plane resolution)
     %   - n_cols    : number of columns (in-plance resolution)
     %   - n_slices  : number of slices
     %
-    % this class has the following function
+    % optional inputs are
+    %   - hrf       : either a column vector containing a single hemodynamic
+    %                 response used for every voxel;
+    %                 or a matrix with a unique hemodynamic response along
+    %                 its columns for each voxel.
+    %                 By default the canonical two-gamma hemodynamic response
+    %                 function is generated internally based on the scan parameters.
     %
-    %   - delay = RBA.get_delay();
-    %   - direction = RBA.get_direction(direction);
-    %   - RBA.set_delay(delay);
-    %   - RBA.set_direction(direction);
-    %   - results = RBA.fitting(data);
+    % this class has the following functions
+    %
+    %   - hrf = RBA.get_hrf();
+    %   - X = RBA.get_design();
+    %   - RBA.set_hrf(hrf);
+    %   - RBA.set_design(X);
+    %   - RBA.optimize_lambda(data,range);
+    %   - results = RBA.perform_ridge(data);
     %
     % use help RBA.function to get more detailed help on any specific
-    % function (e.g. help RBA.fitting)
+    % function (e.g. help RBA.perform_ridge)
     %
     % typical workflow:
     % 1. rba = RBA(params);
-    % 2. rba.set_delay(delay);
-    % 3. rba.set_direction(direction);
-    % 4. results = rba.perform_ridge(data,lambda);
+    % 2. rba.set_design(X);
+    % 3. rba.optimize_lambda(data,range);
+    % 4. results = rba.perform_ridge(data);
     
     properties (Access = private)
         
@@ -76,15 +85,13 @@ classdef RBA < handle
         
         function self = RBA(params,varargin)
             % constructor
-            addpath(pwd)
             p = inputParser;
             addRequired(p,'params',@isstruct);
             addOptional(p,'hrf',[]);
             p.parse(params,varargin{:});
             
             self.is = 'RBA tool';
-            
-            
+
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             
@@ -113,17 +120,9 @@ classdef RBA < handle
             end
         end
         
-        
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns a 4-dimensional matrix with columns corresponding to time.
-            if size(self.hrf,2)>1
-                hrf = reshape(self.hrf,self.l_hrf,...
-                    self.n_rows,self.n_cols,self.n_slices);
-            else
-                hrf = self.hrf;
-            end
+            hrf = self.hrf;
         end
         
         function design = get_design(self)
@@ -131,17 +130,20 @@ classdef RBA < handle
             design = self.X;
         end
         
-        
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector.
             self.l_hrf = size(hrf,1);
             self.hrf = hrf;
         end
         
-        
         function set_design(self,X,varargin)
-            % provide a t-by-p design matrix to the class with t timepoints
+            % provide a n-by-p design matrix to the class with n samples
             % and p predictors.
+            %
+            % optional inputs is
+            %  - convolve: a logical (boolean) value indicating whether the
+            %              design matrix needs to be convolved with the
+            %              hemodynamic response function (default = false)
             
             p = inputParser;
             addRequired(p,'X',@isnumeric);
@@ -161,14 +163,35 @@ classdef RBA < handle
             end
         end
         
-        function optimize_lambda(self,data)
+        function optimize_lambda(self,data,range,varargin)
+            % performs k-fold cross-validation to find an optimal value
+            % for the shrinkage parameter lambda.
+            %
+            % required inputs are
+            %  - data : a matrix of empirically observed BOLD timecourses
+            %            whose columns correspond to time (volumes).
+            %  - range: a range of candidate values for lambda.
+            %
+            % optional inputs is
+            %  - mask  : mask file for selecting voxels
             
             text = 'optimizing lambda...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
-            data = zscore(reshape(data(1:self.n_samples,:,:,:),...
+            p = inputParser;
+            addRequired(p,'data',@isnumeric);
+            addRequired(p,'range',@isnumeric);
+            addOptional(p,'mask',true(self.n_total,1));
+            p.parse(data,range,varargin{:});
+            
+            range = p.Results.range;
+            mask = reshape(p.Results.mask,self.n_total,1);
+            
+            data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
+            data = data(:,mask);
+            numV = size(data,2)
             K = 3:9;
             if isprime(self.n_samples)
                 data(end,:) = [];
@@ -186,64 +209,74 @@ classdef RBA < handle
                 end
                 samples = self.n_samples / K;
             end
-            fprintf(' using %i splits\n',K)
-            M = 0:5;
-            fit = zeros(6,self.n_total);
-            for u=1:6
+            fprintf('->using %i splits\n',K)
+            iterations = numel(range);
+            fit = zeros(iterations,numV);
+            total = iterations*K*numV;
+            for i=1:iterations
+                fprintf('-->lambda = %.2f\n',range(i))
+                
                 for k=0:K-1
+                    fprintf('--->split = %i\n',k+1)
                     s = k * samples+1 : k * samples + samples;
                     tst_X = self.X;
                     tst_X(s,:) = [];
                     tst_data = data;
                     tst_data(s,:) = [];
-                    trn_X(s,:) = self.X(s,:);
+                    trn_X = self.X(s,:);
                     trn_data = data(s,:);
-                    
                     
                     mag_d = sqrt(sum(tst_data.^2));
                     
                     if self.n_samples<self.n_predictors
                         [U,D,V] = svd(trn_X,'econ');
                         XX = V * inv(D^2 + ...
-                            10^M(u) * eye(samples)) * D * U';
+                            range(i) * eye(samples)) * D * U';
                     else
                         XX = (trn_X'* trn_X + ...
-                            10^M(u) * eye(self.n_predictors)) \ trn_X';
+                            range(i) * eye(self.n_predictors)) \ trn_X';
                     end
                     
-                    for v=1:self.n_total
+                    for v=1:numV
                         b = XX * trn_data(:,v);
                         y = tst_X * b;
                         mag_y = sqrt(y'* y);
-                        fit(u,v) = fit(u,v) + ((y'* tst_data(:,v))...
-                            / (mag_y * mag_d(v))) / (K+1);
-                    end 
+                        fit(i,v) = fit(i,v) + ((y'* tst_data(:,v))...
+                            / (mag_y * mag_d(v)) - fit(i,v)) / (K+1);
+                        waitbar(((i-1) * numV * K +...
+                            k * numV + v)/(total),wb)
+                    end
                 end
-                waitbar(u/6,wb)
             end
             [~,id] = max(mean(fit,2));
-            self.lambda = 10^M(id);
+            self.lambda = range(id);
+            
+            close(wb)
+            fprintf('done\n');
         end
         
         function results = perform_ridge(self,data,varargin)
-            % performs ridge regression and returns a structure with the following fields
+            % performs ridge regression and returns a structure with the
+            % following fields
             %  - Beta
             %  - RSS
             %  - F_statistic
             %  - P_value
             %
-            % the dimension of each field corresponds to the dimension of the data.
+            % The dimension of each field corresponds to the dimensions of
+            % the data. Beta is a cell structure with each cell being
+            % a column vector of length p (number of predictors).
             %
             % required input is
-            %  - data  : a 4-dimensional matrix of empirically observed BOLD timecourses.
-            %               Columns correspond to time (volumes).
+            %  - data  : a matrix of empirically observed BOLD timecourses
+            %            whose columns correspond to time (volumes).
             %
             % optional inputs are
             %  - lambda: shrinkage parameter
             %  - mask  : mask file for selecting voxels
             
-            text = 'performing ridge regression...';
-            fprintf('%s\n',text)
+            text = 'performing ridge regression with lambda = ...';
+            fprintf('%s%.2f\n',text,self.lambda)
             wb = waitbar(0,text,'Name',self.is);
             
             p = inputParser;
@@ -278,16 +311,16 @@ classdef RBA < handle
             df2 = self.n_samples-1;
             for v=1:self.n_total
                 if mask(v)
-                b = XX * data(:,v);
-                y = self.X * b;
-                y_ = mean(y);
-                MSM = (y-y_)'*(y-y_)/df1;
-                MSE = (y-data(:,v))'*(y-data(:,v))/df2;
-                
-                results.Beta{v} = b;
-                results.RSS(v) = (y-data(:,v))'*(y-data(:,v));
-                results.F_stat(v) = MSM/MSE;
-                results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
+                    b = XX * data(:,v);
+                    y = self.X * b;
+                    y_ = mean(y);
+                    MSM = (y-y_)'*(y-y_)/df1;
+                    MSE = (y-data(:,v))'*(y-data(:,v))/df2;
+                    
+                    results.Beta{v} = b;
+                    results.RSS(v) = (y-data(:,v))'*(y-data(:,v));
+                    results.F_stat(v) = MSM/MSE;
+                    results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
                 end
                 waitbar(v/self.n_total,wb)
             end

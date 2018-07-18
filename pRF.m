@@ -36,10 +36,12 @@ classdef pRF < handle
     %   - h_stimulus: height of stimulus images in pixels
     %
     % optional inputs are
-    %   - hrf       : either a column vector containing a single hemodynamic response used for every voxel;
-    %                 or a 4D matrix with a unique hemodynamic response per voxel.
-    %                 By default the canonical two-gamma hemodynamic response function is generated internally 
-    %                 based on the scan parameters.
+    %   - hrf       : either a column vector containing a single hemodynamic 
+    %                 response used for every voxel;
+    %                 or a matrix with a unique hemodynamic response along
+    %                 its columns for each voxel.
+    %                 By default the canonical two-gamma hemodynamic response 
+    %                 function is generated internally based on the scan parameters.
     %
     % this class has the following functions
     %
@@ -94,7 +96,6 @@ classdef pRF < handle
         
         function self = pRF(params,varargin)
             % constructor
-            addpath(pwd)
             p = inputParser;
             addRequired(p,'params',@isstruct);
             addOptional(p,'hrf',[]);
@@ -134,8 +135,11 @@ classdef pRF < handle
         
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns a 4-dimensional matrix with columns corresponding to time.
+            % If a single hrf is used for every voxel, this function 
+            % returns a column vector.
+            % If a unique hrf is used for each voxel, this function returns 
+            % a matrix with columns corresponding to time and the remaining
+            % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
                     self.n_rows,self.n_cols,self.n_slices);
@@ -145,22 +149,25 @@ classdef pRF < handle
         end
         
         function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of dimensions height-by-width-by-time.
+            % returns the stimulus used by the class as a 3D matrix of 
+            % dimensions height-by-width-by-time.
             stimulus = reshape(self.stimulus,self.h_stimulus,...
                 self.w_stimulus,self.n_samples);
         end
         
         function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the effective stimulus and each combination of pRF model parameters as a time-by-combinations matrix.
-            % Note that the predicted timecourses have not been convolved with a hemodynamic response.
-            %
+            % returns the timecourses predicted based on the effective 
+            % stimulus and each combination of pRF model parameters as a 
+            % time-by-combinations matrix.
+            % Note that the predicted timecourses have not been convolved 
+            % with a hemodynamic response.
             tc = ifft(self.tc_fft);
         end
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a 4-dimensional matrix with columns corresponding to time.
-            % Dimensions 2, 3 and 4 need to match those of the BOLD data.
+            % or a matrix whose columns correspond to time.
+            % The remaining dimensionsneed to match those of the data.
             self.l_hrf = size(hrf,1);
             if ndims(hrf)==4
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
@@ -171,8 +178,10 @@ classdef pRF < handle
         
         function set_stimulus(self,stimulus)
             % provide a stimulus matrix.
-            % This is useful if the .png files have already been imported and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D (height-by-width-by-time) or 2D (height*width-by-time).
+            % This is useful if the .png files have already been imported 
+            % and stored in matrix form.
+            % Note that the provided stimulus matrix can be either 3D 
+            % (height-by-width-by-time) or 2D (height*width-by-time).
             if ndims(stimulus==3)
                 self.stimulus = reshape(stimulus,...
                     self.w_stimulus*self.h_stimulus,...
@@ -183,8 +192,10 @@ classdef pRF < handle
         end
         
         function import_stimulus(self)
-            % imports the series of .png files constituting the stimulation protocol of the pRF experiment.
-            % This series is stored internally in a matrix format (height-by-width-by-time).
+            % imports the series of .png files constituting the stimulation 
+            % protocol of the pRF experiment.
+            % This series is stored internally in matrix format 
+            % (height-by-width-by-time).
             % The stimulus is required to generate timecourses.
             
             [~,path] = uigetfile('*.png',...
@@ -221,8 +232,10 @@ classdef pRF < handle
         end
         
         function create_timecourses(self,varargin)
-            % creates predicted timecourses based on the effective stimulus and a range of isotropic receptive fields. 
-            % Isotropic receptive fields are generated for a grid of location (x,y) and size parameters.
+            % creates predicted timecourses based on the effective stimulus 
+            % and a range of isotropic receptive fields. 
+            % Isotropic receptive fields are generated for a grid of 
+            % location (x,y) and size parameters.
             %
             % optional inputs are
             %  - max_R       : radius of the field of fiew     (default =  10.0)
@@ -297,12 +310,13 @@ classdef pRF < handle
             %  - Eccentricity
             %  - Polar_Angle
             %
-            % each field is 3-dimensional corresponding to the volumetric dimensions of the data.
+            % the dimension of each field corresponds to the dimensions 
+            % of the data.
             %
             % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed
-            %                BOLD timecourses. Columns correspond to time
-            %                (volumes).
+            %  - data  : a matrix of empirically observed BOLD timecourses
+            %            whose columns correspond to time (volumes).
+            %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
             

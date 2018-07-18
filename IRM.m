@@ -23,7 +23,7 @@ classdef IRM < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-    % Inpute-referred model (IRM) mapping tool.
+    % Input-referred model (IRM) mapping tool.
     %
     % irm = IRM(params) creates an instance of the IRM class.
     % params is a structure with 5 required fields
@@ -34,10 +34,12 @@ classdef IRM < handle
     %   - n_slices  : number of slices
     %
     % optional inputs are
-    %   - hrf       : either a column vector containing a single hemodynamic response used for every voxel;
-    %                 or a 4D matrix with a unique hemodynamic response per voxel.
-    %                 By default the canonical two-gamma hemodynamic response function is generated internally
-    %                 based on the scan parameters.
+    %   - hrf       : either a column vector containing a single hemodynamic 
+    %                 response used for every voxel;
+    %                 or a matrix with a unique hemodynamic response along
+    %                 its columns for each voxel.
+    %                 By default the canonical two-gamma hemodynamic response 
+    %                 function is generated internally based on the scan parameters.
     %
     % this class has the following functions
     %
@@ -87,7 +89,6 @@ classdef IRM < handle
         
         function self = IRM(params,varargin)
             % constructor
-            addpath(pwd)
             p = inputParser;
             addRequired(p,'params',@isstruct);
             addOptional(p,'hrf',[]);
@@ -124,8 +125,11 @@ classdef IRM < handle
         
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns a 4-dimensional matrix with columns corresponding to time.
+            % If a single hrf is used for every voxel, this function 
+            % returns a column vector.
+            % If a unique hrf is used for each voxel, this function returns 
+            % a matrix with columns corresponding to time and the remaining
+            % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
                     self.n_rows,self.n_cols,self.n_slices);
@@ -140,15 +144,18 @@ classdef IRM < handle
         end
         
         function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the stimulus protocol and each combination of the input-referred model parameters as a time-by-combinations matrix.
-            % Note that the predicted timecourses have not been convolved with a hemodynamic response.
+            % returns the timecourses predicted based on the stimulus 
+            % protocol and each combination of the input-referred model 
+            % parameters as a time-by-combinations matrix.
+            % Note that the predicted timecourses have not been convolved 
+            % with a hemodynamic response.
             tc = ifft(self.tc_fft);
         end
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a 4-dimensional matrix with columns corresponding to time.
-            % Dimensions 2, 3 and 4 need to match those of the BOLD data.
+            % or a matrix whose columns correspond to time.
+            % The remaining dimensionsneed to match those of the data.
             self.l_hrf = size(hrf,1);
             if ndims(hrf)==4
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
@@ -163,11 +170,13 @@ classdef IRM < handle
         end
         
         function create_timecourse(self,FUN,xdata)
-            % creates predicted timecourses based on the stimulus protocol and a range of parameters for an input referred model.
+            % creates predicted timecourses based on the stimulus protocol 
+            % and a range of parameters for an input referred model.
             %
             % required inputs are
-            % - FUN          : a function handle defining the input referred model
-            % - xdata        : an n-by-p matrix defining the parameter space with n values in p parameters
+            % - FUN  : a function handle defining the input referred model
+            % - xdata: an n-by-p matrix defining the parameter space with 
+            %          n values in p parameters
             text = 'creating timecourses...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
@@ -203,24 +212,21 @@ classdef IRM < handle
             % returns the corresponding parameter values of the
             % input-referred model. The class returns a structure with two
             % fields.
-            %  - R: correlations (fit) - 3-dimensional matrix corresponding
-            %       to the volumetric dimensions of the data.
-            %  - P: estimate parameters - 4-dimensional matrix. The first
-            %       dimension corresponds to the parameters, the remaining
-            %       three to the volume.
+            %  - R: correlations (fit) - dimension corresponds to the 
+            %       dimensions of the data.
+            %  - P: estimate parameters - dimension corresponds to the 
+            %       dimensions of the data + 1.
             %
             % required inputs are
-            %  - data     : a 4-dimensional matrix of empirically observed
-            %                BOLD timecourses. Columns correspond to time
-            %                (volumes).
+            %  - data  : a matrix of empirically observed BOLD timecourses
+            %            whose columns correspond to time (volumes).
+            %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
-            
             
             text = 'mapping input-referred model...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
-            
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -238,7 +244,6 @@ classdef IRM < handle
             
             results.R = zeros(self.n_total,1);
             results.P = zeros(self.n_total,self.n_predictors);
-            
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -289,6 +294,5 @@ classdef IRM < handle
             close(wb)
             fprintf('done\n');
         end
-        
     end
 end
