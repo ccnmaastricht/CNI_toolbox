@@ -8,9 +8,9 @@ The latest version may always be found here.
 This software was developed with MATLAB R2017a and access to the full suite of MATLAB add-on packages. Some of these packages may be required to run the software.
 
 ## Installation
-There are two options for installing the toolbox. Either download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/MSenden/CNI_toolbox/raw/master/Computational%20Neuroimaging%20Toolbox.mltbx), navigate to the downloaded file within Matlab and then execute the following command:
+There are two options for installing the toolbox. Either download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/MSenden/CNI_toolbox/raw/master/Computational%20Neuroimaging%20Toolbox.mltbx), navigate to the downloaded file within MATLAB and then execute the following command:
 
-```Matlab
+```MATLAB
 matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx');
 ```
 
@@ -21,7 +21,7 @@ This repository contains four files.
 1. PEA.m: a MATLAB class implementation of Fourier analysis of phase-encoded stimuli.
 2. pRF.m: a MATLAB class implementation of population receptive field mapping.
 3. IRM.m: a MATLAB class implementation of input-referred model estimation.
-4. RBA.m: a MATLAB class implementation of voxel-wise ridge regression.
+4. RRT.m: a MATLAB class implementation of voxel-wise ridge regression.
 
 
 ### Phase-encoding analysis tool.
