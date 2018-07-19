@@ -129,7 +129,7 @@ typical workflow:
 
 ### Ridge-based analysis tool.
 
-rba = RBA(params) creates an instance of the RBA class.
+rrt = RRT(params) creates an instance of the RRT class.
 params is a structure with 5 required fields
   - f_sampling: sampling frequency (1/TR)
   - n_samples : number of samples (volumes)
@@ -147,18 +147,18 @@ optional inputs are
 
 This class has the following functions
 
-  - hrf = RBA.get_hrf();
-  - X = RBA.get_design();
-  - RBA.set_hrf(hrf);
-  - RBA.set_design(X);
-  - RBA.optimize_lambda(data,range);
-  - results = RBA.perform_ridge(data);
+  - hrf = RRT.get_hrf();
+  - X = RRT.get_design();
+  - RRT.set_hrf(hrf);
+  - RRT.set_design(X);
+  - RRT.optimize_lambda(data,range);
+  - results = RRT.perform_ridge(data);
 
-Use help RBA.function to get more detailed help on any specific
-function (e.g. help RBA.perform_ridge)
+Use help RRT.function to get more detailed help on any specific
+function (e.g. help RRT.perform_ridge)
 
 typical workflow:
-1. rba = RBA(params);
-2. rba.set_design(X);
-3. rba.optimize_lambda(data,range);
-4. results = rba.perform_ridge(data);
+1. rrt = RRT(params);
+2. rrt.set_design(X);
+3. rrt.optimize_lambda(data,range);
+4. results = rrt.perform_ridge(data);
