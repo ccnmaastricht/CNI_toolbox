@@ -23,7 +23,7 @@ classdef RRT < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-    % Ridge-based analysis tool.
+    % Ridge regression tool.
     %
     % rrt = RRT(params) creates an instance of the RRT class.
     % params is a structure with 5 required fields
