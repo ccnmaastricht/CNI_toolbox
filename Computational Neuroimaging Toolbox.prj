@@ -1,5 +1,5 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
-  <configuration file="/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
+  <configuration build-checksum="2321574524" file="/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
     <param.appname>Computational Neuroimaging Toolbox</param.appname>
     <param.authnamewatermark>Mario Senden</param.authnamewatermark>
     <param.email>mario.senden@googlemail.com</param.email>

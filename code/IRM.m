@@ -175,29 +175,34 @@ classdef IRM < handle
             %
             % required inputs are
             % - FUN  : a function handle defining the input referred model
-            % - xdata: an n-by-p matrix defining the parameter space with 
-            %          n values in p parameters
+            % - xdata: a cell structure with p elements (p = number of
+            %          parameters).
+            %          Each cell element needs to contain a column vector
+            %          of variable length with parameter values to be explored.
             text = 'creating timecourses...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
             self.xdata = xdata;
-            [n_observations,self.n_predictors] = size(xdata);
-            self.n_points = n_observations^self.n_predictors;
+            self.n_predictors = numel(xdata);
+            n_observations = zeros(1,self.n_predictors);
+            for p=1:self.n_predictors
+                n_observations(p) = numel(xdata{p});
+            end
+            self.n_points = prod(n_observations);
             i = (0:self.n_points-1)';
             self.idx = zeros(self.n_points,self.n_predictors);
             
             for p=1:self.n_predictors
-                self.idx(:,p) = mod(floor(i/(n_observations^(self.n_predictors-p))),...
-                    n_observations) + 1;
+                self.idx(:,p) = mod(floor(i/prod(n_observations(p+1:end))),...
+                n_observations(p)) + 1;
             end
             
             tc = zeros(self.n_samples,self.n_points);
             x = zeros(self.n_predictors,1);
             for j=1:self.n_points
-                
                 for p=1:self.n_predictors
-                    x(p) = xdata(self.idx(j,p),p);
+                    x(p) = self.xdata{p}(self.idx(j,p));
                 end
                 tc(:,j) = FUN(self.stimulus,x);
                 waitbar(j/self.n_points,wb);
@@ -260,7 +265,7 @@ classdef IRM < handle
                         CS(id) = 0;
                         [results.R(v),j] = max(CS);
                         for p=1:self.n_predictors
-                            results.P(v,p) = self.xdata(self.idx(j,p),p);
+                            results.P(v,p) = self.xdata{p}(self.idx(j,p));
                         end
                     end
                     waitbar(v/self.n_total,wb)
