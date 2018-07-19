@@ -78,6 +78,7 @@ classdef RRT < handle
         hrf
         X
         lambda
+        permute
         
     end
     
@@ -104,6 +105,7 @@ classdef RRT < handle
             self.n_slices = params.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             self.X = [];
+            self.permute = true;
             
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
@@ -158,8 +160,10 @@ classdef RRT < handle
                     zeros(self.n_samples-self.l_hrf,1)],...
                     [1,self.n_predictors]));
                 self.X = zscore(ifft(X_fft.*hrf_fft));
+                self.permute = false;
             else
                 self.X = zscore(p.Results.X);
+                self.permute = true;
             end
         end
         
@@ -188,9 +192,15 @@ classdef RRT < handle
             range = p.Results.range;
             mask = reshape(p.Results.mask,self.n_total,1);
             
-            data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
+            data = zscore(reshape(p.Results.data(self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
+            
             data = data(:,mask);
+            if self.permute
+                p = randperm(self.n_samples);
+                data = data(p,:);
+            end
+            
             numV = size(data,2);
             K = 2:7;
             if isprime(self.n_samples)
