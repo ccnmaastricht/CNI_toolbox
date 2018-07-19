@@ -192,7 +192,7 @@ classdef RRT < handle
             range = p.Results.range;
             mask = reshape(p.Results.mask,self.n_total,1);
             
-            data = zscore(reshape(p.Results.data(self.n_samples,:,:,:),...
+            data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
             
             data = data(:,mask);
