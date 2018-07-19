@@ -196,48 +196,39 @@ classdef RRT < handle
                 self.n_samples,self.n_total));
             
             data = data(:,mask);
+            X_ = self.X;
             if self.permute
                 p = randperm(self.n_samples);
                 data = data(p,:);
+                X_ = self.X(p,:);
             end
             
             numV = size(data,2);
-            K = 2:7;
+            K = [2,3:2:9];
             if isprime(self.n_samples)
                 data(end,:) = [];
                 id = mod(self.n_samples-1,K)==0;
                 K = min(K(id));
-                if isempty(K)
-                    K = 2;
-                end
                 samples = (self.n_samples-1) / K;
             else
                 id = mod(self.n_samples,K)==0;
                 K = min(K(id));
-                if isempty(K)
-                    K = 2;
-                end
                 samples = self.n_samples / K;
             end
-            fprintf('->using %i splits\n',K)
+            fprintf(' using %i splits\n',K)
             iterations = numel(range);
-            fit = zeros(iterations,numV);
-            total = iterations*K*numV;
+            fit = zeros(iterations,K);
+            total = iterations * K * numV;
             for i=1:iterations
-                fprintf('-->lambda = %.2f\n',range(i))
-                
                 for k=0:K-1
-                    fprintf('--->split %i\n',k+1)
                     s = k * samples+1 : k * samples + samples;
-                    trn_X = self.X;
+                    trn_X = X_;
                     trn_X(s,:) = [];
                     trn_data = data;
                     trn_data(s,:) = [];
-                    tst_X = self.X(s,:);
+                    tst_X = X_(s,:);
                     tst_data = data(s,:);
-                    
-                    mag_d = sqrt(sum(tst_data.^2));
-                    
+                   
                     if self.n_samples<self.n_predictors
                         [U,D,V] = svd(trn_X,'econ');
                         XX = V * inv(D^2 + ...
@@ -250,19 +241,19 @@ classdef RRT < handle
                     for v=1:numV
                         b = XX * trn_data(:,v);
                         y = tst_X * b;
-                        mag_y = sqrt(y' * y);
-                        fit(i,v) = fit(i,v) + ((y'* tst_data(:,v))...
-                            / (mag_y * mag_d(v)) - fit(i,v)) / (K+1);
+                        r = (y - tst_data(:,v));
+                        fit(i,k+1) = fit(i,k+1) + (r' * r - fit(i,k+1)) / v;
                         waitbar(((i-1) * numV * K +...
                             k * numV + v)/(total),wb)
                     end
                 end
             end
-            [~,id] = max(mean(fit,2));
+            [~,id] = min(mean(fit,2));
             self.lambda = range(id);
             
             close(wb)
             fprintf('done\n');
+            fprintf('--> best lambda = %.2f\n',self.lambda)
         end
         
         function results = perform_ridge(self,data,varargin)
@@ -285,9 +276,7 @@ classdef RRT < handle
             %  - lambda: shrinkage parameter
             %  - mask  : mask file for selecting voxels
             
-            text = 'performing ridge regression';
-            fprintf('%s with lambda = %.2f...\n',text, self.lambda)
-            wb = waitbar(0,sprintf('%s...',text),'Name',self.is);
+            
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -301,6 +290,10 @@ classdef RRT < handle
             end
             mask = reshape(p.Results.mask,self.n_total,1);
             
+            text = 'performing ridge regression';
+            fprintf('%s with lambda = %.2f...\n',text, self.lambda)
+            wb = waitbar(0,sprintf('%s...',text),'Name',self.is);
+            
             if self.n_samples<self.n_predictors
                 [U,D,V] = svd(self.X,'econ');
                 XX = V * inv(D^2 + ...
@@ -313,7 +306,7 @@ classdef RRT < handle
                 self.n_samples,self.n_total));
             
             results.Beta = cell(self.n_rows,self.n_cols,self.n_slices);
-            results.RSS = zeros(self.n_total,1);
+            results.RSS = Inf(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
             results.P_value = ones(self.n_total,1);
             
