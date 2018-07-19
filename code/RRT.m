@@ -1,4 +1,4 @@
-classdef RBA < handle
+classdef RRT < handle
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % %%%                               LICENSE                             %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -25,7 +25,7 @@ classdef RBA < handle
     %
     % Ridge-based analysis tool.
     %
-    % rba = RBA(params) creates an instance of the RBA class.
+    % rrt = RRT(params) creates an instance of the RRT class.
     % params is a structure with 5 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
@@ -43,21 +43,21 @@ classdef RBA < handle
     %
     % this class has the following functions
     %
-    %   - hrf = RBA.get_hrf();
-    %   - X = RBA.get_design();
-    %   - RBA.set_hrf(hrf);
-    %   - RBA.set_design(X);
-    %   - RBA.optimize_lambda(data,range);
-    %   - results = RBA.perform_ridge(data);
+    %   - hrf = RRT.get_hrf();
+    %   - X = RRT.get_design();
+    %   - RRT.set_hrf(hrf);
+    %   - RRT.set_design(X);
+    %   - RRT.optimize_lambda(data,range);
+    %   - results = RRT.perform_ridge(data);
     %
-    % use help RBA.function to get more detailed help on any specific
-    % function (e.g. help RBA.perform_ridge)
+    % use help RRT.function to get more detailed help on any specific
+    % function (e.g. help RRT.perform_ridge)
     %
     % typical workflow:
-    % 1. rba = RBA(params);
-    % 2. rba.set_design(X);
-    % 3. rba.optimize_lambda(data,range);
-    % 4. results = rba.perform_ridge(data);
+    % 1. rrt = RRT(params);
+    % 2. rrt.set_design(X);
+    % 3. rrt.optimize_lambda(data,range);
+    % 4. results = rrt.perform_ridge(data);
     
     properties (Access = private)
         
@@ -83,14 +83,14 @@ classdef RBA < handle
     
     methods (Access = public)
         
-        function self = RBA(params,varargin)
+        function self = RRT(params,varargin)
             % constructor
             p = inputParser;
             addRequired(p,'params',@isstruct);
             addOptional(p,'hrf',[]);
             p.parse(params,varargin{:});
             
-            self.is = 'RBA tool';
+            self.is = 'RRT tool';
 
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
