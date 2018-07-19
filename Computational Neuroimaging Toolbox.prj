@@ -13,28 +13,8 @@
     <param.products.id />
     <param.products.version />
     <param.platforms />
-    <param.guid>53027810-a4c4-4ea6-80ce-583caf567798</param.guid>
-    <param.exclude.filters>% List files contained in your toolbox folder that you would like to exclude
-% from packaging.  Excludes should be listed relative to the toolbox folder.
-% Some examples of how to specify excludes are provided below:
-%
-% A single file in the toolbox folder:
-% .svn
-%
-% A single file in a subfolder of the toolbox folder:
-% example/.svn
-%
-% All files in a subfolder of the toolbox folder:
-% example/*
-%
-% All files of a certain name in all subfolders of the toolbox folder:
-% **/.svn
-%
-% All files matching a pattern in all subfolders of the toolbox folder:
-% **/*.bak
-%
-*~
-*.zip</param.exclude.filters>
+    <param.guid>7931af2e-784c-42f3-8b17-fa6857398d03</param.guid>
+    <param.exclude.filters />
     <param.examples />
     <param.demosxml />
     <param.apps />
@@ -49,6 +29,7 @@
       <param.products.id />
       <param.products.version />
       <param.platforms />
+      <param.exclude.filters />
       <param.examples />
       <param.demosxml />
       <param.apps />
@@ -62,7 +43,7 @@
     <fileset.rootfiles>
       <file>${PROJECT_ROOT}/code/IRM.m</file>
       <file>${PROJECT_ROOT}/code/PEA.m</file>
-      <file>${PROJECT_ROOT}/code/RBA.m</file>
+      <file>${PROJECT_ROOT}/code/RRT.m</file>
       <file>${PROJECT_ROOT}/code/pRF.m</file>
     </fileset.rootfiles>
     <fileset.depfun.included />
