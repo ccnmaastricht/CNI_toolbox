@@ -78,7 +78,6 @@ classdef RRT < handle
         hrf
         X
         lambda
-        permute
         
     end
     
@@ -105,7 +104,6 @@ classdef RRT < handle
             self.n_slices = params.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             self.X = [];
-            self.permute = true;
             
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
@@ -160,10 +158,8 @@ classdef RRT < handle
                     zeros(self.n_samples-self.l_hrf,1)],...
                     [1,self.n_predictors]));
                 self.X = zscore(ifft(X_fft.*hrf_fft));
-                self.permute = false;
             else
                 self.X = zscore(p.Results.X);
-                self.permute = true;
             end
         end
         
@@ -172,12 +168,14 @@ classdef RRT < handle
             % for the shrinkage parameter lambda.
             %
             % required inputs are
-            %  - data : a matrix of empirically observed BOLD timecourses
+            %  - data   : a matrix of empirically observed BOLD timecourses
             %            whose columns correspond to time (volumes).
-            %  - range: a range of candidate values for lambda.
+            %  - range  : a range of candidate values for lambda.
             %
-            % optional inputs is
-            %  - mask  : mask file for selecting voxels
+            % optional inputs are
+            %  - mask   : mask file for selecting voxels
+            %  - permute: permute the observations (if the data has no  
+            %             temporal structure).
             
             text = 'optimizing lambda...';
             fprintf('%s\n',text)
@@ -187,17 +185,18 @@ classdef RRT < handle
             addRequired(p,'data',@isnumeric);
             addRequired(p,'range',@isnumeric);
             addOptional(p,'mask',true(self.n_total,1));
+            addOptional(p,'permute',false);
             p.parse(data,range,varargin{:});
             
             range = p.Results.range;
             mask = reshape(p.Results.mask,self.n_total,1);
-            
+            permute = p.Results.permute;
             data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
             
             data = data(:,mask);
             X_ = self.X;
-            if self.permute
+            if permute
                 p = randperm(self.n_samples);
                 data = data(p,:);
                 X_ = self.X(p,:);
@@ -277,7 +276,6 @@ classdef RRT < handle
             %  - mask  : mask file for selecting voxels
             
             
-            
             p = inputParser;
             addRequired(p,'data',@isnumeric);
             addOptional(p,'lambda',[]);
@@ -296,8 +294,8 @@ classdef RRT < handle
             
             if self.n_samples<self.n_predictors
                 [U,D,V] = svd(self.X,'econ');
-                XX = V * inv(D^2 + ...
-                    self.lambda * eye(self.n_samples)) * D * U';
+                XX = V * (D^2 + ...
+                    self.lambda * eye(self.n_samples)) \ D * U';
             else
                 XX = (self.X'* self.X + ...
                     self.lambda * eye(self.n_predictors)) \ self.X';
@@ -323,7 +321,7 @@ classdef RRT < handle
                     results.Beta{v} = b;
                     results.RSS(v) = (y-data(:,v))'*(y-data(:,v));
                     results.F_stat(v) = MSM/MSE;
-                    results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
+                    results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
                 end
                 waitbar(v/self.n_total,wb)
             end

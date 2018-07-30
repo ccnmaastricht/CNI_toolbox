@@ -133,14 +133,14 @@ classdef PEA < handle
         end
         
         function results = fitting(self,data)
-            % identifies phase and amplitude at stimulation frequency for 
+            % identifies phase and amplitude at stimulation frequency for
             % each voxel and returns a structure with the following fields
             %  - Phase
             %  - Amplitude
             %  - F_statistic
             %  - P_value
             %
-            % the dimension of each field corresponds to the dimensions of 
+            % the dimension of each field corresponds to the dimensions of
             % the data.
             %
             % required inputs are
@@ -156,37 +156,39 @@ classdef PEA < handle
             XX = (X'*X)\X';
             data = zscore(reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total));
-            
+            std_signal = std(data);
             results.Phase = zeros(self.n_total,1);
             results.Amplitude = zeros(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
-            results.P_value = zeros(self.n_total,1);
+            results.P_value = ones(self.n_total,1);
             
             df1 = 2;
             df2 = self.n_samples-1;
             for v=1:self.n_total
-                b = XX * data(:,v);
-                y = X*b;
-                
-                % estimate and correct for autocorrelation
-                r = y-data(:,v);
-                T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
-                W = [1; -((T'* T) \ T' * r)];
-                Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
-                Xc(:,2) = [X(:,2),[0;X(1:end-1,2)],[zeros(2,1);X(1:end-2,2)]] * W;
-                Dc = [data(:,v),[0;data(1:end-1,v)],[zeros(2,1);data(1:end-2,v)]] * W;
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-                b = (Xc' * Xc) \ Xc' * Dc;
-                y = Xc * b;
-                y_ = mean(y);
-                MSM = (y-y_)'*(y-y_)/df1;
-                MSE = (y-data(:,v))'*(y-Dc)/df2;
-                
-                results.Phase(v) = angle(b(1)+b(2)*1i);
-                results.Amplitude(v) = abs(b(1)+b(2)*1i);
-                results.F_stat(v) = MSM/MSE;
-                results.P_value(v) = 1-fcdf(MSM/MSE,df1,df2);
+                if std_signal>0
+                    b = XX * data(:,v);
+                    y = X*b;
+                    
+                    % estimate and correct for autocorrelation
+                    r = y-data(:,v);
+                    T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
+                    W = [1; -((T'* T) \ T' * r)];
+                    Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
+                    Xc(:,2) = [X(:,2),[0;X(1:end-1,2)],[zeros(2,1);X(1:end-2,2)]] * W;
+                    Dc = [data(:,v),[0;data(1:end-1,v)],[zeros(2,1);data(1:end-2,v)]] * W;
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    
+                    b = (Xc' * Xc) \ Xc' * Dc;
+                    y = Xc * b;
+                    y_ = mean(y);
+                    MSM = (y-y_)'*(y-y_)/df1;
+                    MSE = (y-data(:,v))'*(y-Dc)/df2;
+                    
+                    results.Phase(v) = angle(b(1)+b(2)*1i);
+                    results.Amplitude(v) = abs(b(1)+b(2)*1i);
+                    results.F_stat(v) = MSM/MSE;
+                    results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
+                end
                 waitbar(v/self.n_total,wb)
             end
             
