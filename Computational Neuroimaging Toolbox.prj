@@ -1,39 +1,20 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
-  <configuration build-checksum="2321574524" file="/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
+  <configuration file="/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
     <param.appname>Computational Neuroimaging Toolbox</param.appname>
     <param.authnamewatermark>Mario Senden</param.authnamewatermark>
-    <param.email>mario.senden@googlemail.com</param.email>
+    <param.email>mario.senden@maastrichtuniversity.nl</param.email>
     <param.company>Maastricht University</param.company>
-    <param.summary>A MATLAB toolbox for estimating input-referred models</param.summary>
+    <param.summary>A MATLAB toolbox for estimating input-referred models.</param.summary>
     <param.description />
-    <param.screenshot>${PROJECT_ROOT}/.logo/toolbox_logo.png</param.screenshot>
-    <param.version>1.0</param.version>
+    <param.screenshot />
+    <param.version>1.0.1</param.version>
     <param.output>${PROJECT_ROOT}/Computational Neuroimaging Toolbox.mltbx</param.output>
     <param.products.name />
     <param.products.id />
     <param.products.version />
     <param.platforms />
-    <param.guid>7931af2e-784c-42f3-8b17-fa6857398d03</param.guid>
-    <param.exclude.filters>% List files contained in your toolbox folder that you would like to exclude
-% from packaging.  Excludes should be listed relative to the toolbox folder.
-% Some examples of how to specify excludes are provided below:
-%
-% A single file in the toolbox folder:
-% .svn
-%
-% A single file in a subfolder of the toolbox folder:
-% example/.svn
-%
-% All files in a subfolder of the toolbox folder:
-% example/*
-%
-% All files of a certain name in all subfolders of the toolbox folder:
-% **/.svn
-%
-% All files matching a pattern in all subfolders of the toolbox folder:
-% **/*.bak
-%
-*~</param.exclude.filters>
+    <param.guid>7068eb66-9ff0-4bcf-ab6f-0de3ce7956cc</param.guid>
+    <param.exclude.filters />
     <param.examples />
     <param.demosxml />
     <param.apps />
@@ -42,12 +23,13 @@
     <param.javaclasspath.excludes />
     <unset>
       <param.description />
-      <param.version />
+      <param.screenshot />
       <param.output />
       <param.products.name />
       <param.products.id />
       <param.products.version />
       <param.platforms />
+      <param.exclude.filters />
       <param.examples />
       <param.demosxml />
       <param.apps />
