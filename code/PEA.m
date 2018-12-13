@@ -182,7 +182,7 @@ classdef PEA < handle
                     y = Xc * b;
                     y_ = mean(y);
                     MSM = (y-y_)'*(y-y_)/df1;
-                    MSE = (y-data(:,v))'*(y-Dc)/df2;
+                    MSE = (y-Dc)'*(y-Dc)/df2;
                     
                     results.Phase(v) = angle(b(1)+b(2)*1i);
                     results.Amplitude(v) = abs(b(1)+b(2)*1i);
