@@ -1,10 +1,10 @@
 <deployment-project plugin="plugin.toolbox" plugin-version="1.0">
-  <configuration file="/home/donatello/Code/CNI_toolbox/code/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox/code" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
+  <configuration file="/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.prj" location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox" target="target.toolbox" target-name="Package Toolbox">
     <param.appname>Computational Neuroimaging Toolbox</param.appname>
     <param.authnamewatermark>Mario Senden</param.authnamewatermark>
-    <param.email>mario.senden@googlemail.com</param.email>
+    <param.email>mario.senden@maastricht university.nl</param.email>
     <param.company />
-    <param.summary>MATLAB toolbox for estimating input-referred models.</param.summary>
+    <param.summary />
     <param.description />
     <param.screenshot />
     <param.version>1.0</param.version>
@@ -13,7 +13,7 @@
     <param.products.id />
     <param.products.version />
     <param.platforms />
-    <param.guid>686d0d1d-4342-46d2-87e5-3e06e298ef5a</param.guid>
+    <param.guid>1d8825f4-752f-4f88-91d7-7cb39c7e922b</param.guid>
     <param.exclude.filters />
     <param.exclude.pcodedmfiles>true</param.exclude.pcodedmfiles>
     <param.examples />
@@ -25,8 +25,8 @@
     <param.matlabpath.excludes />
     <param.javaclasspath.excludes />
     <param.exported.on.package>false</param.exported.on.package>
-    <param.release.start>R2016a</param.release.start>
-    <param.release.end>latest</param.release.end>
+    <param.release.start />
+    <param.release.end />
     <param.release.current.only>false</param.release.current.only>
     <param.compatiblity.windows>true</param.compatiblity.windows>
     <param.compatiblity.macos>true</param.compatiblity.macos>
@@ -40,6 +40,7 @@
     <param.additional.sw.linux.url />
     <unset>
       <param.company />
+      <param.summary />
       <param.description />
       <param.screenshot />
       <param.version />
@@ -59,6 +60,8 @@
       <param.matlabpath.excludes />
       <param.javaclasspath.excludes />
       <param.exported.on.package />
+      <param.release.start />
+      <param.release.end />
       <param.release.current.only />
       <param.compatiblity.windows />
       <param.compatiblity.macos />
@@ -72,19 +75,19 @@
       <param.additional.sw.linux.url />
     </unset>
     <fileset.rootdir>
-      <file>/home/donatello/Code/CNI_toolbox/code</file>
+      <file>${PROJECT_ROOT}/code</file>
     </fileset.rootdir>
     <fileset.rootfiles>
-      <file>${PROJECT_ROOT}/IRM.m</file>
-      <file>${PROJECT_ROOT}/PEA.m</file>
-      <file>${PROJECT_ROOT}/RRT.m</file>
-      <file>${PROJECT_ROOT}/pRF.m</file>
+      <file>${PROJECT_ROOT}/code/IRM.m</file>
+      <file>${PROJECT_ROOT}/code/PEA.m</file>
+      <file>${PROJECT_ROOT}/code/RRT.m</file>
+      <file>${PROJECT_ROOT}/code/pRF.m</file>
     </fileset.rootfiles>
     <fileset.depfun.included />
     <fileset.depfun.excluded />
     <fileset.package />
     <build-deliverables>
-      <file location="/home/donatello/Code/CNI_toolbox/code" name="Computational Neuroimaging Toolbox.mltbx" optional="false">/home/donatello/Code/CNI_toolbox/code/Computational Neuroimaging Toolbox.mltbx</file>
+      <file location="/home/donatello/Code/CNI_toolbox" name="Computational Neuroimaging Toolbox.mltbx" optional="false">/home/donatello/Code/CNI_toolbox/Computational Neuroimaging Toolbox.mltbx</file>
     </build-deliverables>
     <workflow />
     <matlab>
@@ -131,7 +134,7 @@
       <vista>false</vista>
       <linux>true</linux>
       <solaris>false</solaris>
-      <osver>4.15.0-42-generic</osver>
+      <osver>4.15.0-43-generic</osver>
       <os32>false</os32>
       <os64>true</os64>
       <arch>glnxa64</arch>
