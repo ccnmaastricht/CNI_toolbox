@@ -162,8 +162,8 @@ classdef PEA < handle
             results.F_stat = zeros(self.n_total,1);
             results.P_value = ones(self.n_total,1);
             
-            df1 = 2;
-            df2 = self.n_samples-1;
+            df1 = 1;
+            df2 = self.n_samples-2;
             for v=1:self.n_total
                 if std_signal>0
                     b = XX * data(:,v);

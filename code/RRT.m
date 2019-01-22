@@ -308,8 +308,9 @@ classdef RRT < handle
             results.F_stat = zeros(self.n_total,1);
             results.P_value = ones(self.n_total,1);
             
-            df1 = 2;
-            df2 = self.n_samples-1;
+            [~,p] = size(self.X);
+            df1 = p-1;
+            df2 = self.n_samples-p;
             for v=1:self.n_total
                 if mask(v)
                     b = XX * data(:,v);
