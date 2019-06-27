@@ -182,7 +182,7 @@ classdef pRF < handle
             % and stored in matrix form.
             % Note that the provided stimulus matrix can be either 3D 
             % (height-by-width-by-time) or 2D (height*width-by-time).
-            if ndims(stimulus==3)
+            if ndims(stimulus)==3
                 self.stimulus = reshape(stimulus,...
                     self.w_stimulus*self.h_stimulus,...
                     self.n_samples);
