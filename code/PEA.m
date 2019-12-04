@@ -180,8 +180,8 @@ classdef PEA < handle
                     
                     b = (Xc' * Xc) \ Xc' * Dc;
                     y = Xc * b;
-                    y_ = mean(y);
-                    MSM = (y-y_)'*(y-y_)/df1;
+                    mu = mean(DC);
+                    MSM = (y-mu)'*(y-mu)/df1;
                     MSE = (y-Dc)'*(y-Dc)/df2;
                     
                     results.Phase(v) = angle(b(1)+b(2)*1i);
