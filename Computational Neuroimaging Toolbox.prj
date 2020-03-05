@@ -5,7 +5,7 @@
     <param.email>mario.senden@maastrichtuniversity.nl</param.email>
     <param.company>Maastricht University</param.company>
     <param.summary />
-    <param.description>Toolbox for estimating input-referred models containing tools for Fourier analyses of phase-encoded stimuli, population receptive field mapping, estimating parameters of generic (user-defined) input-referred models as well as performing ridge regression.</param.description>
+    <param.description>A toolbox for estimating input-referred models. Specifically, the toolbox contains tools for Fourier analyses of phase-encoded stimuli, population receptive field mapping, estimating parameters of generic (user-defined) input-referred models as well as performing ridge regression.</param.description>
     <param.screenshot>${PROJECT_ROOT}/icon.png</param.screenshot>
     <param.version>1.1</param.version>
     <param.output>${PROJECT_ROOT}/Computational Neuroimaging Toolbox.mltbx</param.output>
@@ -13,7 +13,7 @@
     <param.products.id />
     <param.products.version />
     <param.platforms />
-    <param.guid>45386ee3-9879-4212-9d25-81d0d56faf46</param.guid>
+    <param.guid>c28f0cda-6da2-4405-8c3c-ec0245c6f968</param.guid>
     <param.exclude.filters />
     <param.exclude.pcodedmfiles>true</param.exclude.pcodedmfiles>
     <param.examples />
@@ -65,6 +65,8 @@
       <param.required.addons />
       <param.matlab.project.id />
       <param.matlab.project.name />
+      <param.release.start />
+      <param.release.end />
       <param.release.current.only />
       <param.compatiblity.windows />
       <param.compatiblity.macos />

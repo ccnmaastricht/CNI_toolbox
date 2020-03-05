@@ -119,7 +119,7 @@ classdef pRF < handle
             self.h_stimulus = p.Results.params.h_stimulus;
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
-                if ndims(p.Results.hrf)==4
+                if ndims(p.Results.hrf)>2
                     self.hrf = reshape(p.Results.hrf,...
                         self.l_hrf,self.n_total);
                 else
@@ -238,7 +238,7 @@ classdef pRF < handle
             % location (x,y) and size parameters.
             %
             % optional inputs are
-            %  - max_R       : radius of the field of fiew     (default =  10.0)
+            %  - max_radius  : radius of the field of fiew     (default =  10.0)
             %  - number_XY   : steps in x and y direction      (default =  30.0)
             %  - min_slope   : lower bound of RF size slope    (default =   0.1)
             %  - max_slope   : upper bound of RF size slope    (default =   1.2)
@@ -250,14 +250,14 @@ classdef pRF < handle
             
             p = inputParser;
             addOptional(p,'number_XY',30);
-            addOptional(p,'max_R',10);
+            addOptional(p,'max_radius',10);
             addOptional(p,'number_slope',10);
             addOptional(p,'min_slope',0.1);
             addOptional(p,'max_slope',1.2);
             p.parse(varargin{:});
             
             n_xy = p.Results.number_XY;
-            max_r = p.Results.max_R;
+            max_r = p.Results.max_radius;
             n_slope = p.Results.number_slope;
             min_slope = p.Results.min_slope;
             max_slope = p.Results.max_slope;
@@ -303,10 +303,10 @@ classdef pRF < handle
         function results = mapping(self,data,varargin)
             % identifies the best fitting timecourse for each voxel and
             % returns a structure with the following fields
-            %  - R
-            %  - X
-            %  - Y
-            %  - Sigma
+            %  - corr_fit
+            %  - mu_x
+            %  - mu_y
+            %  - sigma
             %  - Eccentricity
             %  - Polar_Angle
             %
