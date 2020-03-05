@@ -338,10 +338,10 @@ classdef pRF < handle
             data = zscore(data);
             mag_d = sqrt(sum(data.^2));
             
-            results.R = zeros(self.n_total,1);
-            results.X = zeros(self.n_total,1);
-            results.Y = zeros(self.n_total,1);
-            results.Sigma = zeros(self.n_total,1);
+            results.corr_fit = zeros(self.n_total,1);
+            results.mu_x = zeros(self.n_total,1);
+            results.mu_y = zeros(self.n_total,1);
+            results.sigma = zeros(self.n_total,1);
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -355,12 +355,12 @@ classdef pRF < handle
                             (mag_tc*mag_d(v));
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
-                        [results.R(v),j] = max(CS);
-                        results.X(v) = cos(self.pa(self.idx(j,1))) * ...
+                        [results.corr_fit(v),j] = max(CS);
+                        results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
                             self.ecc(self.idx(j,2));
-                        results.Y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
                             self.ecc(self.idx(j,2));
-                        results.Sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                             self.slope(self.idx(j,3));
                     end
                     waitbar(v/self.n_total,wb)
@@ -379,23 +379,23 @@ classdef pRF < handle
                             (mag_tc*mag_d(v));
                         id = isinf(CS) | isnan(CS);
                         CS(id) = 0;
-                        [results.R(v),j] = max(CS);
-                        results.X(v) = cos(self.pa(self.idx(j,1))) * ...
+                        [results.corr_fit(v),j] = max(CS);
+                        results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
                             self.ecc(self.idx(j,2));
-                        results.Y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
                             self.ecc(self.idx(j,2));
-                        results.Sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                             self.slope(self.idx(j,3));
                     end
                     waitbar(v/self.n_total,wb)
                 end
             end
-            results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
-            results.X = reshape(results.X,self.n_rows,self.n_cols,self.n_slices);
-            results.Y = reshape(results.Y,self.n_rows,self.n_cols,self.n_slices);
-            results.Sigma = reshape(results.Sigma,self.n_rows,self.n_cols,self.n_slices);
-            results.Eccentricity = abs(results.X+results.Y*1i);
-            results.Polar_Angle = angle(results.X+results.Y*1i);
+            results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_x = reshape(results.mu_x,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_y = reshape(results.mu_y,self.n_rows,self.n_cols,self.n_slices);
+            results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
+            results.Eccentricity = abs(results.mu_x+results.mu_y*1i);
+            results.Polar_Angle = angle(results.mu_x+results.mu_y*1i);
             close(wb)
             fprintf('done\n');
         end
