@@ -1,5 +1,10 @@
 # Computational Neuroimaging Toolbox
 
+![](https://img.shields.io/github/issues/ccnmaastricht/CNI_toolbox)
+![](https://img.shields.io/github/forks/ccnmaastricht/CNI_toolbox)
+![](https://img.shields.io/github/stars/ccnmaastricht/CNI_toolbox)
+![](https://img.shields.io/github/license/ccnmaastricht/CNI_toolbox)
+
 The Computational Neuroimaging Toolbox is a MATLAB toolbox for estimating input-referred models. Specifically, the toolbox contains tools for Fourier analyses of phase-encoded stimuli, population receptive field mapping, estimating parameters of generic (user-defined) input-referred models as well as performing ridge regression.
 
 This code is hosted at https://github.com/ccnmaastricht/CNI_toolbox
@@ -63,11 +68,11 @@ params is a structure with 7 required fields
   - h_stimulus: height of stimulus images in pixels
 
 optional inputs are
-  - hrf       : either a column vector containing a single hemodynamic 
+  - hrf       : either a column vector containing a single hemodynamic
                 response used for every voxel;
                 or a matrix with a unique hemodynamic response along
                 its columns for each voxel.
-                By default the canonical two-gamma hemodynamic response 
+                By default the canonical two-gamma hemodynamic response
                 function is generated internally based on the scan parameters.
 
 This class has the following functions
@@ -81,7 +86,7 @@ This class has the following functions
   - pRF.create_timecourses();
   - results = pRF.mapping(data);
 
-Use help pRF.function to get more detailed help on any specific function 
+Use help pRF.function to get more detailed help on any specific function
 (e.g. help pRF.mapping)
 
 typical workflow:
@@ -101,11 +106,11 @@ params is a structure with 5 required fields
   - n_slices  : number of slices
 
 optional inputs are
-  - hrf       : either a column vector containing a single hemodynamic 
+  - hrf       : either a column vector containing a single hemodynamic
                 response used for every voxel;
                 or a matrix with a unique hemodynamic response along
                 its columns for each voxel.
-                By default the canonical two-gamma hemodynamic response 
+                By default the canonical two-gamma hemodynamic response
                 function is generated internally based on the scan parameters.
 
 This class has the following functions
