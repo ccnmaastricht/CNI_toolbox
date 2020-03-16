@@ -1,9 +1,10 @@
 # Computational Neuroimaging Toolbox
 
+![](https://img.shields.io/badge/v1.2.0.svg?style=flat-square)
+![](https://img.shields.io/github/license/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/issues/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/forks/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/stars/ccnmaastricht/CNI_toolbox)
-![](https://img.shields.io/github/license/ccnmaastricht/CNI_toolbox)
 
 The Computational Neuroimaging Toolbox is a MATLAB toolbox for estimating input-referred models. Specifically, the toolbox contains tools for Fourier analyses of phase-encoded stimuli, population receptive field mapping, estimating parameters of generic (user-defined) input-referred models as well as performing ridge regression.
 
