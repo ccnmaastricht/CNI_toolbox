@@ -36,11 +36,11 @@ classdef pRF < handle
     %   - h_stimulus: height of stimulus images in pixels
     %
     % optional inputs are
-    %   - hrf       : either a column vector containing a single hemodynamic 
+    %   - hrf       : either a column vector containing a single hemodynamic
     %                 response used for every voxel;
     %                 or a matrix with a unique hemodynamic response along
     %                 its columns for each voxel.
-    %                 By default the canonical two-gamma hemodynamic response 
+    %                 By default the canonical two-gamma hemodynamic response
     %                 function is generated internally based on the scan parameters.
     %
     % this class has the following functions
@@ -54,7 +54,7 @@ classdef pRF < handle
     %   - pRF.create_timecourses();
     %   - results = pRF.mapping(data);
     %
-    % use help pRF.function to get more detailed help on any specific function 
+    % use help pRF.function to get more detailed help on any specific function
     % (e.g. help pRF.mapping)
     %
     % typical workflow:
@@ -135,9 +135,9 @@ classdef pRF < handle
         
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function 
+            % If a single hrf is used for every voxel, this function
             % returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns 
+            % If a unique hrf is used for each voxel, this function returns
             % a matrix with columns corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
@@ -149,17 +149,17 @@ classdef pRF < handle
         end
         
         function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of 
+            % returns the stimulus used by the class as a 3D matrix of
             % dimensions height-by-width-by-time.
             stimulus = reshape(self.stimulus,self.h_stimulus,...
                 self.w_stimulus,self.n_samples);
         end
         
         function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the effective 
-            % stimulus and each combination of pRF model parameters as a 
+            % returns the timecourses predicted based on the effective
+            % stimulus and each combination of pRF model parameters as a
             % time-by-combinations matrix.
-            % Note that the predicted timecourses have not been convolved 
+            % Note that the predicted timecourses have not been convolved
             % with a hemodynamic response.
             tc = ifft(self.tc_fft);
         end
@@ -173,14 +173,14 @@ classdef pRF < handle
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
             else
                 self.hrf = hrf;
-            end 
+            end
         end
         
         function set_stimulus(self,stimulus)
             % provide a stimulus matrix.
-            % This is useful if the .png files have already been imported 
+            % This is useful if the .png files have already been imported
             % and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D 
+            % Note that the provided stimulus matrix can be either 3D
             % (height-by-width-by-time) or 2D (height*width-by-time).
             if ndims(stimulus)==3
                 self.stimulus = reshape(stimulus,...
@@ -192,9 +192,9 @@ classdef pRF < handle
         end
         
         function import_stimulus(self)
-            % imports the series of .png files constituting the stimulation 
+            % imports the series of .png files constituting the stimulation
             % protocol of the pRF experiment.
-            % This series is stored internally in matrix format 
+            % This series is stored internally in matrix format
             % (height-by-width-by-time).
             % The stimulus is required to generate timecourses.
             
@@ -232,9 +232,9 @@ classdef pRF < handle
         end
         
         function create_timecourses(self,varargin)
-            % creates predicted timecourses based on the effective stimulus 
-            % and a range of isotropic receptive fields. 
-            % Isotropic receptive fields are generated for a grid of 
+            % creates predicted timecourses based on the effective stimulus
+            % and a range of isotropic receptive fields.
+            % Isotropic receptive fields are generated for a grid of
             % location (x,y) and size parameters.
             %
             % optional inputs are
@@ -276,8 +276,8 @@ classdef pRF < handle
                 mod(floor(i/(n_slope)),n_xy)+1,...
                 mod(i,n_slope)+1];
             
-            n_lower = ceil(n_xy/2); 
-            n_upper = floor(n_xy/2); 
+            n_lower = ceil(n_xy/2);
+            n_upper = floor(n_xy/2);
             self.ecc = exp([linspace(log(max_r),log(.1),n_lower),...
                 linspace(log(.1),log(max_r),n_upper)]);
             self.pa = linspace(0,(n_xy-1)/n_xy*2*pi,n_xy);
@@ -292,7 +292,7 @@ classdef pRF < handle
                 W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
                 waitbar(j/self.n_points*.9,wb);
             end
-
+            
             tc = W * self.stimulus;
             waitbar(1,wb);
             self.tc_fft = fft(tc');
@@ -310,7 +310,7 @@ classdef pRF < handle
             %  - Eccentricity
             %  - Polar_Angle
             %
-            % the dimension of each field corresponds to the dimensions 
+            % the dimension of each field corresponds to the dimensions
             % of the data.
             %
             % required inputs are
@@ -327,21 +327,32 @@ classdef pRF < handle
             p = inputParser;
             addRequired(p,'data',@isnumeric);
             addOptional(p,'threshold',100);
+            addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
             data = p.Results.data;
             threshold = p.Results.threshold;
+            mask = p.Results.mask;
             
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
             data = zscore(data);
-            mag_d = sqrt(sum(data.^2));
+            
+            if isempty(mask)
+                mask = mean_signal>=threshold;
+            end
+            mask = mask(:);
+            voxel_index = find(mask);
+            n_voxels = numel(voxel_index);
+            
+            mag_d = sqrt(sum(data(:,mask).^2));
             
             results.corr_fit = zeros(self.n_total,1);
             results.mu_x = zeros(self.n_total,1);
             results.mu_y = zeros(self.n_total,1);
             results.sigma = zeros(self.n_total,1);
+            
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -349,53 +360,55 @@ classdef pRF < handle
                     [1,self.n_points]));
                 tc = zscore(ifft(self.tc_fft.*hrf_fft))';
                 mag_tc = sqrt(sum(tc.^2,2));
-                for v=1:self.n_total
-                    if mean_signal(v)>threshold
-                        CS = (tc*data(:,v))./...
-                            (mag_tc*mag_d(v));
-                        id = isinf(CS) | isnan(CS);
-                        CS(id) = 0;
-                        [results.corr_fit(v),j] = max(CS);
-                        results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
-                            self.ecc(self.idx(j,2));
-                        results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
-                            self.ecc(self.idx(j,2));
-                        results.sigma(v) = self.ecc(self.idx(j,2)) * ...
-                            self.slope(self.idx(j,3));
-                    end
-                    waitbar(v/self.n_total,wb)
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    CS = (tc*data(:,v))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        self.slope(self.idx(j,3));
+                    
+                    waitbar(v/n_voxels,wb)
                 end
             else
                 hrf_fft_all = fft([self.hrf;...
-                            zeros(self.n_samples-self.l_hrf,self.n_total)]);
-                for v=1:self.n_total
-                    if mean_signal(v)>threshold
-                        hrf_fft = repmat(hrf_fft_all(:,v),...
-                            [1,self.n_points]);
-                        tc = zscore(ifft(self.tc_fft.*hrf_fft))';
-                        mag_tc = sqrt(sum(tc.^2,2));
-                        
-                        CS = (tc*data(:,v))./...
-                            (mag_tc*mag_d(v));
-                        id = isinf(CS) | isnan(CS);
-                        CS(id) = 0;
-                        [results.corr_fit(v),j] = max(CS);
-                        results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
-                            self.ecc(self.idx(j,2));
-                        results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
-                            self.ecc(self.idx(j,2));
-                        results.sigma(v) = self.ecc(self.idx(j,2)) * ...
-                            self.slope(self.idx(j,3));
-                    end
-                    waitbar(v/self.n_total,wb)
+                    zeros(self.n_samples-self.l_hrf,self.n_total)]);
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    hrf_fft = repmat(hrf_fft_all(:,v),...
+                        [1,self.n_points]);
+                    tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                    mag_tc = sqrt(sum(tc.^2,2));
+                    
+                    CS = (tc*data(:,v))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        self.slope(self.idx(j,3));
+                    
+                    waitbar(v/n_voxels,wb)
                 end
             end
             results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
             results.mu_x = reshape(results.mu_x,self.n_rows,self.n_cols,self.n_slices);
             results.mu_y = reshape(results.mu_y,self.n_rows,self.n_cols,self.n_slices);
             results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
-            results.Eccentricity = abs(results.mu_x+results.mu_y*1i);
-            results.Polar_Angle = angle(results.mu_x+results.mu_y*1i);
+            results.eccentricity = abs(results.mu_x+results.mu_y*1i);
+            results.polar_angle = angle(results.mu_x+results.mu_y*1i);
             close(wb)
             fprintf('done\n');
         end
