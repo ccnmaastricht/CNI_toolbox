@@ -307,8 +307,8 @@ classdef pRF < handle
             %  - mu_x
             %  - mu_y
             %  - sigma
-            %  - Eccentricity
-            %  - Polar_Angle
+            %  - eccentricity
+            %  - polar_Angle
             %
             % the dimension of each field corresponds to the dimensions
             % of the data.
