@@ -1,6 +1,6 @@
 # Computational Neuroimaging Toolbox
 
-![](https://img.shields.io/badge/v1.2.0-blueviolet.svg?style=flat-square)
+![](https://img.shields.io/badge/release-v1.2.0-blueviolet.svg?style=flat-square)
 ![](https://img.shields.io/github/license/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/issues/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/forks/ccnmaastricht/CNI_toolbox)
