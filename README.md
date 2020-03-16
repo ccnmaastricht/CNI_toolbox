@@ -24,10 +24,10 @@ Alternatively, download the compressed toolbox [Computational Neuroimaging Toolb
 
 ## Files
 This repository contains four files.
-1. PEA.m: a MATLAB class implementation of Fourier analysis of phase-encoded stimuli.
-2. pRF.m: a MATLAB class implementation of population receptive field mapping.
-3. IRM.m: a MATLAB class implementation of input-referred model estimation.
-4. RRT.m: a MATLAB class implementation of voxel-wise ridge regression.
+1. `PEA.m` - MATLAB class implementation of Fourier analysis of phase-encoded stimuli.
+2. `pRF.m` - MATLAB class implementation of population receptive field mapping.
+3. `IRM.m` - MATLAB class implementation of input-referred model estimation.
+4. `RRT.m` - MATLAB class implementation of voxel-wise ridge regression.
 
 
 ### Phase-encoding analysis tool.
