@@ -31,8 +31,8 @@ This repository contains four files.
 
 
 ### Phase-encoding analysis tool.
-pea = PEA(params) creates an instance of the PEA class.
-params is a structure with 7 required fields
+`pea = PEA(parameters)` creates an instance of the PEA class.
+parameters is a structure with 7 required fields
 - f_sampling: sampling frequency (1/TR)
 - f_stim    : stimulation frequency
 - n_samples : number of samples (volumes)
@@ -42,24 +42,26 @@ params is a structure with 7 required fields
 
 This class has the following functions
 
-- delay = PEA.get_delay();
-- direction = PEA.get_direction();
-- PEA.set_delay(delay);
-- PEA.set_direction(direction);
-- results = PEA.fitting(data);
+- `delay = PEA.get_delay();`
+- `direction = PEA.get_direction();`
+- `PEA.set_delay(delay);`
+- `PEA.set_direction(direction);`
+- `results = PEA.fitting(data);`
 
-Use help PEA.function to get more detailed help on any specific
-function (e.g. help PEA.fitting)
+Use `help PEA.function` to get more detailed help on any specific
+function (e.g. `help PEA.fitting`)
 
 typical workflow:
-1. pea = PEA(params);
-2. pea.set_delay(delay);
-3. pea.set_direction(direction);
-4. results = pea.fitting(data);
+```Matlab
+pea = PEA(parameters);
+pea.set_delay(delay);
+pea.set_direction(direction);
+results = pea.fitting(data);
+```
 
 ### Population receptive field (pRF) mapping tool.
-prf = pRF(params) creates an instance of the pRF class.
-params is a structure with 7 required fields
+`prf = pRF(parameters)` creates an instance of the pRF class.
+parameters is a structure with 7 required fields
   - f_sampling: sampling frequency (1/TR)
   - n_samples : number of samples (volumes)
   - n_rows    : number of rows (in-plane resolution)
@@ -78,28 +80,30 @@ optional inputs are
 
 This class has the following functions
 
-  - hrf = pRF.get_hrf();
-  - stimulus = pRF.get_stimulus();
-  - tc = pRF.get_timecourses();
-  - pRF.set_hrf(hrf);
-  - pRF.set_stimulus(stimulus);
-  - pRF.import_stimulus();
-  - pRF.create_timecourses();
-  - results = pRF.mapping(data);
+  - `hrf = pRF.get_hrf();`
+  - `stimulus = pRF.get_stimulus();`
+  - `tc = pRF.get_timecourses();`
+  - `pRF.set_hrf(hrf);`
+  - `pRF.set_stimulus(stimulus);`
+  - `pRF.import_stimulus();`
+  - `pRF.create_timecourses();`
+  - `results = pRF.mapping(data);`
 
-Use help pRF.function to get more detailed help on any specific function
-(e.g. help pRF.mapping)
+Use `help pRF.function` to get more detailed help on any specific function
+(e.g. `help pRF.mapping`)
 
 typical workflow:
-1. prf = pRF(params);
-2. prf.import_stimulus();
-3. prf.create_timecourses();
-4. results = prf.mapping(data);
+```Matlab
+prf = pRF(parameters);
+prf.import_stimulus();
+prf.create_timecourses();
+results = prf.mapping(data);
+```
 
 ### Input-referred model (IRM) mapping tool.
 
-irm = IRM(params) creates an instance of the IRM class.
-params is a structure with 5 required fields
+`irm = IRM(parameters)` creates an instance of the IRM class.
+parameters is a structure with 5 required fields
   - f_sampling: sampling frequency (1/TR)
   - n_samples : number of samples (volumes)
   - n_rows    : number of rows (in-plane resolution)
@@ -116,27 +120,29 @@ optional inputs are
 
 This class has the following functions
 
-  - hrf = IRM.get_hrf();
-  - stimulus = IRM.get_stimulus();
-  - tc = IRM.get_timecourses();
-  - IRM.set_hrf(hrf);
-  - IRM.set_stimulus(stimulus);
-  - IRM.create_timecourses();
-  - results = IRM.mapping(data);
+  - `hrf = IRM.get_hrf();`
+  - `stimulus = IRM.get_stimulus();`
+  - `tc = IRM.get_timecourses();`
+  - `IRM.set_hrf(hrf);`
+  - `IRM.set_stimulus(stimulus);`
+  - `IRM.create_timecourses();`
+  - `results = IRM.mapping(data);`
 
-Use help IRM.function to get more detailed help on any specific function
-(e.g. help IRM.mapping)
+Use `help IRM.function` to get more detailed help on any specific function
+(e.g. `help IRM.mapping`)
 
 typical workflow:
-1. irm = IRM(params);
-2. irm.set_stimulus();
-3. irm.create_timecourse(FUN,xdata);
-4. results = irm.mapping(data);
+```Matlab
+irm = IRM(parameters);
+irm.set_stimulus();
+irm.create_timecourse(FUN,xdata);
+results = irm.mapping(data);
+```
 
 ### Ridge-based analysis tool.
 
-rrt = RRT(params) creates an instance of the RRT class.
-params is a structure with 5 required fields
+`rrt = RRT(parameters)` creates an instance of the RRT class.
+parameters is a structure with 5 required fields
   - f_sampling: sampling frequency (1/TR)
   - n_samples : number of samples (volumes)
   - n_rows    : number of rows (in-plane resolution)
@@ -153,18 +159,20 @@ optional inputs are
 
 This class has the following functions
 
-  - hrf = RRT.get_hrf();
-  - X = RRT.get_design();
-  - RRT.set_hrf(hrf);
-  - RRT.set_design(X);
-  - RRT.optimize_lambda(data,range);
-  - results = RRT.perform_ridge(data);
+  - `hrf = RRT.get_hrf();`
+  - `X = RRT.get_design();`
+  - `RRT.set_hrf(hrf);`
+  - `RRT.set_design(X);`
+  - `RRT.optimize_lambda(data,range);`
+  - `results = RRT.perform_ridge(data);`
 
-Use help RRT.function to get more detailed help on any specific
-function (e.g. help RRT.perform_ridge)
+Use `help RRT.function` to get more detailed help on any specific
+function (e.g. `help RRT.perform_ridge`)
 
 typical workflow:
-1. rrt = RRT(params);
-2. rrt.set_design(X);
-3. rrt.optimize_lambda(data,range);
-4. results = rrt.perform_ridge(data);
+```Matlab
+rrt = RRT(parameters);
+rrt.set_design(X);
+rrt.optimize_lambda(data,range);
+results = rrt.perform_ridge(data);
+```
