@@ -154,7 +154,7 @@ classdef PEA < handle
             F = exp(self.direction*2i*pi*self.f_stim*(self.t-self.delay));
             X = zscore([real(F)',imag(F)']);
             XX = (X'*X)\X';
-            data = zscore(reshape(data(1:self.n_samples,:,:,:),...
+            data = zscore(reshape(single(data(1:self.n_samples,:,:,:)),...
                 self.n_samples,self.n_total));
             std_signal = std(data);
             results.Phase = zeros(self.n_total,1);

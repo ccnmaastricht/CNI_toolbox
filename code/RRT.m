@@ -191,7 +191,7 @@ classdef RRT < handle
             range = p.Results.range;
             mask = reshape(p.Results.mask,self.n_total,1);
             permute = p.Results.permute;
-            data = zscore(reshape(p.Results.data(1:self.n_samples,:,:,:),...
+            data = zscore(reshape(single(p.Results.data(1:self.n_samples,:,:,:)),...
                 self.n_samples,self.n_total));
             
             data = data(:,mask);

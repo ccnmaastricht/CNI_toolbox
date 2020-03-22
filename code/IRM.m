@@ -240,7 +240,7 @@ classdef IRM < handle
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
-            data = p.Results.data;
+            data = single(p.Results.data);
             threshold = p.Results.threshold;
             mask = p.Results.mask;
             
