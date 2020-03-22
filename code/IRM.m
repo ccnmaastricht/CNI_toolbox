@@ -34,11 +34,11 @@ classdef IRM < handle
     %   - n_slices  : number of slices
     %
     % optional inputs are
-    %   - hrf       : either a column vector containing a single hemodynamic 
+    %   - hrf       : either a column vector containing a single hemodynamic
     %                 response used for every voxel;
     %                 or a matrix with a unique hemodynamic response along
     %                 its columns for each voxel.
-    %                 By default the canonical two-gamma hemodynamic response 
+    %                 By default the canonical two-gamma hemodynamic response
     %                 function is generated internally based on the scan parameters.
     %
     % this class has the following functions
@@ -125,9 +125,9 @@ classdef IRM < handle
         
         function hrf = get_hrf(self)
             % returns the hemodynamic response used by the class.
-            % If a single hrf is used for every voxel, this function 
+            % If a single hrf is used for every voxel, this function
             % returns a column vector.
-            % If a unique hrf is used for each voxel, this function returns 
+            % If a unique hrf is used for each voxel, this function returns
             % a matrix with columns corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
@@ -144,10 +144,10 @@ classdef IRM < handle
         end
         
         function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the stimulus 
-            % protocol and each combination of the input-referred model 
+            % returns the timecourses predicted based on the stimulus
+            % protocol and each combination of the input-referred model
             % parameters as a time-by-combinations matrix.
-            % Note that the predicted timecourses have not been convolved 
+            % Note that the predicted timecourses have not been convolved
             % with a hemodynamic response.
             tc = ifft(self.tc_fft);
         end
@@ -170,7 +170,7 @@ classdef IRM < handle
         end
         
         function create_timecourse(self,FUN,xdata)
-            % creates predicted timecourses based on the stimulus protocol 
+            % creates predicted timecourses based on the stimulus protocol
             % and a range of parameters for an input referred model.
             %
             % required inputs are
@@ -195,7 +195,7 @@ classdef IRM < handle
             
             for p=1:self.n_predictors
                 self.idx(:,p) = mod(floor(i/prod(n_observations(p+1:end))),...
-                n_observations(p)) + 1;
+                    n_observations(p)) + 1;
             end
             
             tc = zeros(self.n_samples,self.n_points);
@@ -217,9 +217,9 @@ classdef IRM < handle
             % returns the corresponding parameter values of the
             % input-referred model. The class returns a structure with two
             % fields.
-            %  - R: correlations (fit) - dimension corresponds to the 
+            %  - R: correlations (fit) - dimension corresponds to the
             %       dimensions of the data.
-            %  - P: estimate parameters - dimension corresponds to the 
+            %  - P: estimate parameters - dimension corresponds to the
             %       dimensions of the data + 1.
             %
             % required inputs are
@@ -228,6 +228,7 @@ classdef IRM < handle
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
+            % - mask      : binary mask for selecting voxels
             
             text = 'mapping input-referred model...';
             fprintf('%s\n',text)
@@ -236,16 +237,26 @@ classdef IRM < handle
             p = inputParser;
             addRequired(p,'data',@isnumeric);
             addOptional(p,'threshold',100);
+            addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
             data = p.Results.data;
             threshold = p.Results.threshold;
+            mask = p.Results.mask;
             
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
             data = zscore(data);
-            mag_d = sqrt(sum(data.^2));
+            
+            if isempty(mask)
+                mask = mean_signal>=threshold;
+            end
+            mask = mask(:);
+            voxel_index = find(mask);
+            n_voxels = numel(voxel_index);
+            
+            mag_d = sqrt(sum(data(:,mask).^2));
             
             results.R = zeros(self.n_total,1);
             results.P = zeros(self.n_total,self.n_predictors);
@@ -257,38 +268,40 @@ classdef IRM < handle
                 tc = zscore(ifft(self.tc_fft.*hrf_fft))';
                 
                 mag_tc = sqrt(sum(tc.^2,2));
-                for v=1:self.n_total
-                    if mean_signal(v)>threshold
-                        CS = (tc*data(:,v))./...
-                            (mag_tc*mag_d(v));
-                        id = isinf(CS) | isnan(CS);
-                        CS(id) = 0;
-                        [results.R(v),j] = max(CS);
-                        for p=1:self.n_predictors
-                            results.P(v,p) = self.xdata{p}(self.idx(j,p));
-                        end
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    CS = (tc*data(:,v))./...
+                        (mag_tc*mag_d(v));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.R(v),j] = max(CS);
+                    for p=1:self.n_predictors
+                        results.P(v,p) = self.xdata{p}(self.idx(j,p));
                     end
+                    
                     waitbar(v/self.n_total,wb)
                 end
             else
                 hrf_fft_all = fft([self.hrf;...
                     zeros(self.n_samples-self.l_hrf,self.n_total)]);
-                for v=1:self.n_total
-                    if mean_signal(v)>threshold
-                        hrf_fft = repmat(hrf_fft_all(:,v),...
-                            [1,self.n_points]);
-                        tc = zscore(ifft(self.tc_fft.*hrf_fft))';
-                        mag_tc = sqrt(sum(tc.^2,2));
-                        
-                        CS = (tc*data(:,v))./...
-                            (mag_tc*mag_d(v));
-                        id = isinf(CS) | isnan(CS);
-                        CS(id) = 0;
-                        [results.R(v),j] = max(CS);
-                        for p=1:self.n_predictors
-                            results.P(v,p) = self.xdata(self.idx(j,p),p);
-                        end
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    hrf_fft = repmat(hrf_fft_all(:,v),...
+                        [1,self.n_points]);
+                    tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                    mag_tc = sqrt(sum(tc.^2,2));
+                    
+                    CS = (tc*data(:,v))./...
+                        (mag_tc*mag_d(v));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.R(v),j] = max(CS);
+                    for p=1:self.n_predictors
+                        results.P(v,p) = self.xdata(self.idx(j,p),p);
                     end
+                    
                     waitbar(v/self.n_total,wb)
                 end
             end

@@ -319,6 +319,7 @@ classdef pRF < handle
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
+            %  - mask     : binary mask for selecting voxels
             
             text = 'mapping population receptive fields...';
             fprintf('%s\n',text)

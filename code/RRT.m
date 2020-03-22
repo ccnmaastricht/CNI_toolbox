@@ -173,7 +173,7 @@ classdef RRT < handle
             %  - range  : a range of candidate values for lambda.
             %
             % optional inputs are
-            %  - mask   : mask file for selecting voxels
+            %  - mask   : binary mask for selecting voxels
             %  - permute: permute the observations (if the data has no  
             %             temporal structure).
             
