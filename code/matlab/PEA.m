@@ -172,7 +172,7 @@ classdef PEA < handle
                     % estimate and correct for autocorrelation
                     r = data(:,v) - y;
                     T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
-                    W = [1; ((T'* T) \ T' * r)];
+                    W = [1; -((T'* T) \ T' * r)];
                     Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
                     Xc(:,2) = [X(:,2),[0;X(1:end-1,2)],[zeros(2,1);X(1:end-2,2)]] * W;
                     Dc = [data(:,v),[0;data(1:end-1,v)],[zeros(2,1);data(1:end-2,v)]] * W;
