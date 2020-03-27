@@ -170,7 +170,7 @@ classdef PEA < handle
                     y = X*b;
                     
                     % estimate and correct for autocorrelation
-                    r = y-data(:,v);
+                    r = data(:,v) - y;
                     T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
                     W = [1; -((T'* T) \ T' * r)];
                     Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
