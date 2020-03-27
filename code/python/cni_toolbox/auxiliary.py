@@ -58,13 +58,35 @@ def correct_autocorr(X, W):
         timecourses corrected for autocorrelation
     '''
     
-    rows, cols = X.shape
+    rows, cols = size(X, 2)
+    X = np.reshape(X, (rows, cols))
     X_corrected = np.zeros((rows, cols))
     for j in range(cols):
         x_shift_0 = X[:, j].reshape(rows,-1)
         x_shift_1 = np.append(0,X[0:-1, j]).reshape(rows, -1)
-        x_shift_2 = np.append(np.zeros(2), X[0:-1, j]).reshape(rows, -1)
+        x_shift_2 = np.append(np.zeros(2), X[0:-2, j]).reshape(rows, -1)
         x_sliced = np.hstack([x_shift_0, x_shift_1, x_shift_2])
         X_corrected[:, j] = np.matmul(x_sliced, W)
     
     return X_corrected
+
+def size(X, num_desired):
+    '''
+    Parameters
+    ----------
+    X : floating point array (of unknown dimension)
+    num_desired : integer
+        the number of dimensions for which once would like
+        to query the size
+
+    Returns
+    -------
+    output : integer array
+        size for each of num_desired dimensions
+
+    '''
+    num_existing = X.ndim
+    output = np.ones(num_desired).astype(int)
+    output[0:num_existing] = np.shape(X)
+    return output
+    
