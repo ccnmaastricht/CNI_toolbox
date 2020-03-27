@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
 import numpy as np 
-import scipy as sc
 from scipy.stats import zscore, f
 from cni_toolbox.auxiliary import regress, correct_autocorr
 
