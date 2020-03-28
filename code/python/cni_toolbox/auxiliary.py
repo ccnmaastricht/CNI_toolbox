@@ -20,7 +20,47 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np 
 import scipy as sc
+from scipy.special import gamma
 
+def two_gamma(timepoints):
+    '''
+    Parameters
+    ----------
+    timepoints : floating point array (1D)
+
+    Returns
+    -------
+    hrf : floating point array
+        hemodynamic response function
+
+    '''
+    hrf = (6 * timepoints**5 * np.exp(-timepoints)) / gamma(6) \
+                - 1 / 6 * (16 * timepoints ** 15 * np.exp(-timepoints)) \
+                    / gamma(16)
+
+    return hrf
+
+def gaussian(mu_x, mu_y, sigma, x, y):
+    '''
+    Parameters
+    ----------
+    mu_x : float
+        center of Gaussian along x direction
+    mu_y : float
+        center of Gaussian along x direction
+    sigma : float
+        size of Gaussian
+    x : floating point array (1D)
+        x-coordinates
+    y : floating point array (1)
+        y-coordinates
+
+    Returns
+    -------
+    floating point array
+
+    '''
+    return np.exp( -((x - mu_x)**2 + (y - mu_y)**2) / (2 * sigma**2) )
 
 def regress(Y, X):
     '''    
