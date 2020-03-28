@@ -41,7 +41,7 @@ class PEA:
     - PEA.set_direction(direction)
     - results = PEA.fitting(data)
 
-    typical workflow:
+    Typical workflow:
     1. pea = PEA(parameters)
     2. pea.set_delay(delay)
     3. pea.set_direction(direction)
@@ -104,10 +104,6 @@ class PEA:
                 - f_statistic
                 - p_value
         '''
-
-        print('performing phase encoding analysis\n')
-
-        
         F = np.exp(self.direction * 2j * np.pi * self.f_stim * (self.time-self.delay))
         X = zscore(np.array([np.real(F), np.imag(F)]).transpose())
         
@@ -151,9 +147,10 @@ class PEA:
                 results['p_value'][v] = max(1-f.cdf(MSM / MSE, df1, df2), 1e-20)
                 
                 
-                i = int(v / self.n_total * 51)
+                i = int(v / self.n_total * 21)
                 sys.stdout.write('\r')
-                sys.stdout.write("[%-50s] %d%%" % ('='*i, 2*i))
+                sys.stdout.write("performing analysis [%-20s] %d%%" 
+                                 % ('='*i, 5*i))
                 
             
         results['phase'] = np.squeeze(
@@ -177,7 +174,6 @@ class PEA:
                                         self.n_cols,
                                         self.n_slices)))
         
-        print('\nfinished')
         return results
             
 
