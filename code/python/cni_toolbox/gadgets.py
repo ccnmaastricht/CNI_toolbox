@@ -16,6 +16,14 @@ GNU Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+-----------------------------------------------------------------------------
+                                 DESCRPTION                   
+
+This module contains functions either to be used in conjunction with 
+the core tools of the CNI toolbox; or to be used by the tools but 
+without being clearly assignable to one specific tool.
+
 '''
 
 import numpy as np 
@@ -40,27 +48,6 @@ def two_gamma(timepoints):
 
     return hrf
 
-def gaussian(mu_x, mu_y, sigma, x, y):
-    '''
-    Parameters
-    ----------
-    mu_x : float
-        center of Gaussian along x direction
-    mu_y : float
-        center of Gaussian along x direction
-    sigma : float
-        size of Gaussian
-    x : floating point array (1D)
-        x-coordinates
-    y : floating point array (1)
-        y-coordinates
-
-    Returns
-    -------
-    floating point array
-
-    '''
-    return np.exp( -((x - mu_x)**2 + (y - mu_y)**2) / (2 * sigma**2) )
 
 def regress(Y, X):
     '''    
@@ -129,4 +116,5 @@ def size(X, num_desired):
     output = np.ones(num_desired).astype(int)
     output[0:num_existing] = np.shape(X)
     return output
+
     
