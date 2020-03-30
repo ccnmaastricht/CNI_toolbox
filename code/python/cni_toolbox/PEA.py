@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import numpy as np 
 from scipy.stats import zscore, f
-from cni_toolbox.auxiliary import regress, correct_autocorr
+from cni_toolbox.gadgets import regress, correct_autocorr
 
 class PEA:
     '''
@@ -92,7 +92,7 @@ class PEA:
         '''
         Parameters
         ----------
-        data : floating point array (4D: time-by-volume)
+        data : floating point array 
             empirically observed BOLD timecourses
             whose rows correspond to time (volumes).
 
@@ -152,28 +152,13 @@ class PEA:
                 sys.stdout.write("performing analysis [%-20s] %d%%" 
                                  % ('='*i, 5*i))
                 
-            
-        results['phase'] = np.squeeze(
-            np.reshape(results['phase'],
-                                      (self.n_rows,
-                                      self.n_cols,
-                                      self.n_slices)))
-        results['amplitude'] = np.squeeze(
-            np.reshape(results['amplitude'],
-                                          (self.n_rows,
-                                          self.n_cols,
-                                          self.n_slices)))
-        results['f_stat'] = np.squeeze(
-            np.reshape(results['f_stat'],
-                                       (self.n_rows,
-                                       self.n_cols,
-                                       self.n_slices)))
-        results['p_value'] = np.squeeze(
-            np.reshape(results['p_value'],
-                                        (self.n_rows,
-                                        self.n_cols,
-                                        self.n_slices)))
-        
+        for key in results:   
+            results[key] = np.squeeze(
+                np.reshape(results[key],
+                           (self.n_rows,
+                            self.n_cols,
+                            self.n_slices)))
+    
         return results
             
 
