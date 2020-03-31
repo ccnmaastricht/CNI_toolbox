@@ -186,13 +186,14 @@ class pRF:
                                axis = 0)
             
     def set_stimulus(self, stimulus):
-        
+        self.stimulus = np.zeros((self.n_samples + self.l_hrf,
+                                  self.n_total))
         if stimulus.ndim==3:
-            self.stimulus = np.reshape(stimulus,
+            self.stimulus[0:self.n_samples,:] = np.reshape(stimulus,
                     (self.w_stimulus * self.h_stimulus,
                     self.n_samples))
         else:
-            self.stimulus = stimulus
+            self.stimulus[0:self.n_samples,:] = stimulus
             
     def import_stimulus(self):
         
