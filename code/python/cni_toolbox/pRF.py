@@ -320,7 +320,7 @@ class pRF:
         mean_signal = np.mean(data, axis = 0)
         data = zscore(data, axis = 0)
         
-        if mask==None:
+        if mask.all()==None:
                 mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)
