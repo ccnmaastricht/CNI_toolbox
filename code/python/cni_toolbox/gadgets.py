@@ -49,7 +49,9 @@ def two_gamma(timepoints):
     return hrf
 
 
-def regress(Y, X):
+
+def regress(Y, X, l = 0.):
+
     '''    
     Parameters
     ----------
@@ -57,18 +59,46 @@ def regress(Y, X):
         outcome variables
     X : floating pint array (observation-by-predictors)
         predictors
+    l : float
+        (optional) ridge penalty parameter
 
     Returns
     -------
-    floating point array (predictors-by-outcomes)
+    beta : floating point array (predictors-by-outcomes)
         beta coefficients
     '''
+
+    if X.ndim>1:
+        n_observations, n_predictors = X.shape
     
-    return np.matmul(
+    else:
+        n_observations = X.size
+        n_predictors = 1
+    
+
+    if n_observations < n_predictors:
+        U, D, V = np.linalg.svd(X, full_matrices = False)
+        
+        D = np.diag(D)
+        beta = np.matmul(
+            np.matmul(
+                np.matmul(
+                    np.matmul(
+                        V.transpose(), 
+                        sc.linalg.inv(
+                            D**2 +
+                            l * np.eye(n_observations))),
+                    D),
+                U.transpose()), Y)
+    else:
+        beta = np.matmul(
             np.matmul(
             sc.linalg.inv(
-            np.matmul(X.transpose(), X)), 
+            np.matmul(X.transpose(), X) +
+            l * np.eye(n_predictors)), 
             X.transpose()), Y)
+    
+    return beta 
 
 def correct_autocorr(X, W):
     '''
