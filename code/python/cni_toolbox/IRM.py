@@ -28,7 +28,7 @@ class IRM:
     '''
     Input-referred model (IRM) mapping tool.
     
-    irm = IRM(params) creates an instance of the IRM class.
+    irm = IRM(parameters) creates an instance of the IRM class.
     parameters is a dictionary with 5 required keys
       - f_sampling: sampling frequency (1/TR)
       - n_samples : number of samples (volumes)
@@ -230,7 +230,7 @@ class IRM:
         mean_signal = np.mean(data, axis = 0)
         data = zscore(data, axis = 0)
         
-        if mask==None:
+        if mask.all()==None:
                 mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)
