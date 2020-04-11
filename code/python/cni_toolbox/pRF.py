@@ -139,7 +139,7 @@ class pRF:
         else:
             hrf = ifft(self.hrf_fft, axis = 0)[0:self.l_hrf]
         
-        return hrf
+        return np.abs(hrf)
     
     def get_stimulus(self):
         '''
@@ -164,7 +164,7 @@ class pRF:
             predicted timecourses
         '''
         
-        return ifft(self.tc_fft, axis = 0)[0:self.n_samples, :]
+        return np.abs(ifft(self.tc_fft, axis = 0)[0:self.n_samples, :])
     
     def set_hrf(self, hrf):
         '''
@@ -208,12 +208,12 @@ class pRF:
                                   self.w_stimulus,
                                   self.n_samples + self.l_hrf))
         
-        for idx, f in enumerate(files):
+        for f in files:
             number = int(''.join([str(s) for s in f if s.isdigit()]))
             img = cv2.imread(f)
             self.stimulus[:, :, number] = img[:, :, 0]
         
-        mn = np.min(self.stimulus) 
+        mn = np.min(self.stimulus[:, :, ::self.n_samples])  
         mx = np.max(self.stimulus)
         self.stimulus = (self.stimulus - mn) / (mx - mn)
         
