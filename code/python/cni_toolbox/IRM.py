@@ -110,7 +110,7 @@ class IRM:
         else:
             hrf = ifft(self.hrf_fft, axis = 0)[0:self.l_hrf]
         
-        return hrf
+        return np.abs(hrf)
     
     def get_stimulus(self):
         '''
@@ -130,7 +130,7 @@ class IRM:
             predicted timecourses
         '''
         
-        return ifft(self.tc_fft, axis = 0)[0:self.n_samples, :]
+        return np.abs(ifft(self.tc_fft, axis = 0)[0:self.n_samples, :])
     
     def set_hrf(self, hrf):
         '''
