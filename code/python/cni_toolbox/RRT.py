@@ -61,7 +61,7 @@ class RRT:
     4. results = rrt.perform_ridge(data);
     '''
     
-    def __init__(self, parameters, hrf = None):
+    def __init__(self, parameters, hrf = []):
         self.f_sampling = parameters['f_sampling']
         self.p_sampling = 1 / self.f_sampling
         self.n_samples = parameters['n_samples']
@@ -70,7 +70,7 @@ class RRT:
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
         
-        if hrf != None:
+        if np.size(hrf) != 0:
             self.l_hrf = hrf.shape[0]
             if hrf.ndim>2:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
@@ -109,7 +109,7 @@ class RRT:
         else:
             hrf = ifft(self.hrf_fft, axis = 0)[0:self.l_hrf]
         
-        return hrf
+        return np.abs(hrf)
     
     
     def get_design(self):
