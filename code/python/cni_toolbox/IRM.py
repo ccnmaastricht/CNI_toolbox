@@ -204,7 +204,7 @@ class IRM:
 
         self.tc_fft = fft(tc, axis = 0)
         
-    def mapping(self, data, threshold = 100, mask = None):
+    def mapping(self, data, threshold = 100, mask = []):
         '''
         identifies the best fitting timecourse for each voxel and
         returns a dictionary with keyes corresponding to the
@@ -230,7 +230,7 @@ class IRM:
         mean_signal = np.mean(data, axis = 0)
         data = zscore(data, axis = 0)
         
-        if mask.all()==None:
+        if np.size(mask)==0:
                 mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)

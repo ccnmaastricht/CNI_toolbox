@@ -287,7 +287,7 @@ class pRF:
         sys.stdout.write("creating timecourses [%-20s] %d%%\n" % ('='*20, 100))
         self.tc_fft = fft(tc, axis = 0)
         
-    def mapping(self, data, threshold = 100, mask = None):
+    def mapping(self, data, threshold = 100, mask = []):
         '''
         identifies the best fitting timecourse for each voxel and
         returns a dictionary with the following keys
@@ -320,7 +320,7 @@ class pRF:
         mean_signal = np.mean(data, axis = 0)
         data = zscore(data, axis = 0)
         
-        if mask.all()==None:
+        if np.size(mask)==0:
                 mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)

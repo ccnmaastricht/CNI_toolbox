@@ -169,7 +169,7 @@ class RRT:
         self.X = zscore(X[0:self.n_samples,], axis = 0)
         
     def optimize_penalty(self, data, candidates, folds = 4,
-                        mask = None):
+                        mask =[]):
         '''
         performs k-fold cross-validation to find an optimal value
         for the penalty parameter.
@@ -189,7 +189,7 @@ class RRT:
 
         '''
         
-        if mask.all()==None:
+        if np.size(mask)==0:
             mask = np.ones(self.n_total).astype(bool)
         else:
             mask = np.reshape(mask,self.n_total)
