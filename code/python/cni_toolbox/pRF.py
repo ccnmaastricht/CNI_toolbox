@@ -265,9 +265,7 @@ class pRF:
                 
         n_lower = int(np.ceil(n_xy/2))
         n_upper = int(np.floor(n_xy/2))
-        self.ecc = np.exp(np.hstack(
-            [np.linspace(np.log(max_radius), np.log(.1), n_lower),
-             np.linspace(np.log(.1), np.log(max_radius), n_upper)]))
+        self.ecc = np.exp(np.linspace(np.log(0.1), np.log(max_radius), n_xy))
         self.pa = np.linspace(0, (n_xy - 1) / n_xy * 2 * np.pi, n_xy)
         self.slope = np.linspace(min_slope, max_slope, n_slope)
             
@@ -321,8 +319,7 @@ class pRF:
                         (self.n_samples,
                         self.n_total))
         
-        mean_signal = np.mean(data, axis = 0)
-        
+        mean_signal = np.mean(data, axis = 0) 
         
         if np.size(mask)==0:
                 mask = mean_signal >= threshold
