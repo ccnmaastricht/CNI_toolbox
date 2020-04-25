@@ -28,7 +28,6 @@ without being clearly assignable to one specific tool.
 
 import numpy as np 
 import scipy as sc
-from numba import jit
 from scipy.special import gamma
 
 
@@ -51,7 +50,6 @@ def two_gamma(timepoints):
     return hrf
 
 
-@jit
 def regress(Y, X, l = 0.):
 
     '''    
@@ -102,7 +100,6 @@ def regress(Y, X, l = 0.):
     
     return beta 
 
-@jit
 def correct_autocorr(X, W):
     '''
     Parameters
