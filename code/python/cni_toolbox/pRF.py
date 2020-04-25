@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import cv2
 import glob
+import time
 import numpy as np 
 import tkinter as tk
 from tkinter import filedialog
@@ -273,6 +274,8 @@ class pRF:
             
         W = np.zeros((self.n_points,
                 self.w_stimulus * self.h_stimulus))
+        start = time.time()
+        print('\ncreating timecourses')
         for p in range(self.n_points):
             x = np.cos(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             y = np.sin(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
@@ -281,13 +284,14 @@ class pRF:
             
             i = int(p / self.n_points * 19)
             sys.stdout.write('\r')
-            sys.stdout.write("creating timecourses [%-20s] %d%%" 
+            sys.stdout.write("[%-20s] %d%%" 
                    % ('='*i, 5*i))
             
         tc = np.matmul(W, self.stimulus).transpose()
         sys.stdout.write('\r')
-        sys.stdout.write("creating timecourses [%-20s] %d%%\n" % ('='*20, 100))
-        self.tc_fft = fft(tc, axis = 0)
+        sys.stdout.write("[%-20s] %d%%" % ('='*20, 100))
+        self.tc_fft = fft(tc, axis = 0) 
+      
         
     def mapping(self, data, threshold = 100, mask = []):
         '''
@@ -338,6 +342,8 @@ class pRF:
                    'mu_y': np.zeros(self.n_total),
                    'sigma': np.zeros(self.n_total)}
         
+        start = time.time()
+        print('\nmapping receptive fields')
         if self.hrf_fft.ndim==1:
             tc = np.transpose(
                 zscore(
@@ -366,7 +372,7 @@ class pRF:
                     
                 i = int(m / n_voxels * 21)
                 sys.stdout.write('\r')
-                sys.stdout.write("pRF mapping [%-20s] %d%%" 
+                sys.stdout.write("[%-20s] %d%%" 
                     % ('='*i, 5*i))
         
         else:
@@ -397,11 +403,7 @@ class pRF:
                 results['sigma'][v] = self.ecc[self.idx[idx_best, 1]] * \
                         self.slope[self.idx[idx_best, 2]]
         
-                i = int(m / n_voxels * 21)
-                sys.stdout.write('\r')
-                sys.stdout.write("pRF mapping [%-20s] %d%%" 
-                    % ('='*i, 5*i))
-
+                i = int(m / n_voxels * 21) 
             
         for key in results:
             results[key] = np.squeeze(
@@ -414,7 +416,7 @@ class pRF:
                                          results['mu_y'] * 1j)
         results['polar_angle'] = np.angle(results['mu_x'] +
                                           results['mu_y'] * 1j)
-        
+       
         return results
         
                          
