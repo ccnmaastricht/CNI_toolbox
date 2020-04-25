@@ -206,22 +206,24 @@ class pRF:
         
         self.stimulus = np.zeros((self.h_stimulus,
                                   self.w_stimulus,
-                                  self.n_samples + self.l_hrf))
+                                  self.n_samples))
         
         for f in files:
             number = int(''.join([str(s) for s in f if s.isdigit()]))
             img = cv2.imread(f)
             self.stimulus[:, :, number] = img[:, :, 0]
         
-        mn = np.min(self.stimulus[:, :, ::self.n_samples])  
+        mn = np.min(self.stimulus)  
         mx = np.max(self.stimulus)
         self.stimulus = (self.stimulus - mn) / (mx - mn)
         
-        
         self.stimulus = np.reshape(self.stimulus,
                                    (self.h_stimulus * self.w_stimulus,
-                                    self.n_samples + self.l_hrf))
+                                    self.n_samples))
         
+        self.stimulus = np.hstack((self.stimulus,
+            np.zeros((self.h_stimulus * self.w_stimulus, self.l_hrf))))
+
     def create_timecourses(self, max_radius = 10.0, n_xy = 30,
                            min_slope = 0.1, max_slope = 1.2,
                            n_slope = 10):
@@ -318,16 +320,17 @@ class pRF:
                         self.n_total))
         
         mean_signal = np.mean(data, axis = 0)
-        data = zscore(data, axis = 0)
+        
         
         if np.size(mask)==0:
                 mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)
         voxel_index = np.where(mask)[0]
+        data = zscore(data[:, mask], axis = 0)
         n_voxels = voxel_index.size
-        
-        mag_d = np.sqrt(np.sum(data[:, mask]**2, axis = 0))
+
+        mag_d = np.sqrt(np.sum(data**2, axis = 0))
         
             
         results = {'corr_fit': np.zeros(self.n_total),
@@ -347,7 +350,7 @@ class pRF:
             for m in range(n_voxels):
                 v = voxel_index[m]
                 
-                CS = np.matmul(tc, data[:, v]) / (mag_tc * mag_d[m])
+                CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
                 idx_remove = (CS == np.Inf)| (CS == np.NaN);
                 CS[idx_remove] = 0
                 
@@ -380,7 +383,7 @@ class pRF:
                 tc = tc[:, 0:self.n_samples]
                 mag_tc = np.sqrt(np.sum(tc**2, axis = 1))
                     
-                CS = np.matmul(tc, data[:, v]) / (mag_tc * mag_d[m])
+                CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
                 idx_remove = (CS == np.Inf) | (CS == np.NaN)
                 CS[idx_remove] = 0
                 
