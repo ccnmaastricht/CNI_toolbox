@@ -250,7 +250,7 @@ class pRF:
         
         h_ones = np.ones(self.h_stimulus)
         w_ones = np.ones(self.w_stimulus)
-        h_values = np.linspace(-max_radius, max_radius, self.h_stimulus)
+        h_values = np.linspace(max_radius, -max_radius, self.h_stimulus)
         w_values = np.linspace(-max_radius, max_radius, self.w_stimulus)
         x_coordinates = np.outer(h_ones, w_values)
         y_coordinates = np.outer(h_values, w_ones)
