@@ -88,7 +88,7 @@ class PEA:
             self.direction = int(direction)
 
 
-    def fitting(self, data):
+    def fitting(self, data, mask = [], threshold = 100):
         '''
         Parameters
         ----------
@@ -107,11 +107,21 @@ class PEA:
         F = np.exp(self.direction * 2j * np.pi * self.f_stim * (self.time-self.delay))
         X = zscore(np.array([np.real(F), np.imag(F)]).transpose())
         
-        data = zscore(np.reshape(
+        data = np.reshape(
                         data.astype(float), 
                         (self.n_samples,
-                        self.n_total)), 
-                        axis = 0)
+                        self.n_total))
+
+        mean_signal = np.mean(data, axis = 0)
+
+        if np.size(mask)==0:
+            mask = mean_signal >= threshold
+
+        mask = np.reshape(mask,self.n_total)
+        voxel_index = np.where(mask)[0]
+        data = zscore(data[:, mask], axis = 0)
+        n_voxels = voxel_index.size
+
         beta = regress(data, X)
         Y_ = np.matmul(X, beta)
         residuals = data - Y_
@@ -122,34 +132,35 @@ class PEA:
                    'p_value': np.zeros(self.n_total)}
         df1 = 1.0
         df2 = self.n_samples-2.0
-        for v in range(self.n_total):
-            if (std_signal[v]>0):
+        print('\nperforming analysis') 
+        for m in range(n_voxels):
+            v = voxel_index[m]
                 
                     
-                # estimate and correct for autocorrelation
-                T = np.array([np.append(0,residuals[0:-1, v]), 
-                              np.append(np.zeros(2), residuals[0:-2, v])]).transpose()
-                W = np.append(1, -regress(residuals[:, v], T))
+            # estimate and correct for autocorrelation
+            T = np.array([np.append(0,residuals[0:-1, m]), 
+                              np.append(np.zeros(2), residuals[0:-2, m])]).transpose()
+            W = np.append(1, -regress(residuals[:, m], T))
                 
-                X_corrected = correct_autocorr(X, W)
-                D_corrected = correct_autocorr(data[:,v], W)
-                #---------------------------------------------------------------------
+            X_corrected = correct_autocorr(X, W)
+            D_corrected = correct_autocorr(data[:,m], W)
+            #---------------------------------------------------------------------
                     
-                beta_corrected = regress(D_corrected, X_corrected)
-                Y_ = np.matmul(X_corrected, beta_corrected)
-                mu = np.mean(D_corrected, axis = 0);
-                MSM = np.dot((Y_ - mu).transpose(), Y_ - mu) / df1
-                MSE = np.dot((Y_ - D_corrected).transpose(), Y_ - D_corrected) / df2
-                beta_complex = beta_corrected[0] + beta_corrected[1] * 1j 
-                results['phase'][v] = np.angle(beta_complex)
-                results['amplitude'][v] = np.abs(beta_complex)
-                results['f_stat'][v] = MSM / MSE;
-                results['p_value'][v] = max(1-f.cdf(MSM / MSE, df1, df2), 1e-20)
+            beta_corrected = regress(D_corrected, X_corrected)
+            Y_ = np.matmul(X_corrected, beta_corrected)
+            mu = np.mean(D_corrected, axis = 0);
+            MSM = np.dot((Y_ - mu).transpose(), Y_ - mu) / df1
+            MSE = np.dot((Y_ - D_corrected).transpose(), Y_ - D_corrected) / df2
+            beta_complex = beta_corrected[0] + beta_corrected[1] * 1j 
+            results['phase'][v] = np.angle(beta_complex)
+            results['amplitude'][v] = np.abs(beta_complex)
+            results['f_stat'][v] = MSM / MSE;
+            results['p_value'][v] = max(1-f.cdf(MSM / MSE, df1, df2), 1e-20)
                 
                 
-                i = int(v / self.n_total * 21)
-                sys.stdout.write('\r')
-                sys.stdout.write("performing analysis [%-20s] %d%%" 
+            i = int(m / n_voxels * 21)
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-20s] %d%%" 
                                  % ('='*i, 5*i))
                 
         for key in results:   
@@ -158,7 +169,7 @@ class PEA:
                            (self.n_rows,
                             self.n_cols,
                             self.n_slices)))
-    
+                           
         return results
             
 
