@@ -20,7 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import cv2
 import glob
-import time
 import numpy as np 
 import tkinter as tk
 from tkinter import filedialog
@@ -273,8 +272,7 @@ class pRF:
         self.slope = np.linspace(min_slope, max_slope, n_slope)
             
         W = np.zeros((self.n_points,
-                self.w_stimulus * self.h_stimulus))
-        start = time.time()
+                self.w_stimulus * self.h_stimulus)) 
         print('\ncreating timecourses')
         for p in range(self.n_points):
             x = np.cos(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
@@ -342,7 +340,6 @@ class pRF:
                    'mu_y': np.zeros(self.n_total),
                    'sigma': np.zeros(self.n_total)}
         
-        start = time.time()
         print('\nmapping receptive fields')
         if self.hrf_fft.ndim==1:
             tc = np.transpose(
