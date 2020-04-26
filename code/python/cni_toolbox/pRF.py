@@ -74,7 +74,7 @@ class pRF:
         self.n_cols = parameters['n_cols']
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
-        self.r_stimulus = parameters['r_stimulus']:
+        self.r_stimulus = parameters['r_stimulus']
 
         if hrf != None:
             self.l_hrf = hrf.shape[0]
