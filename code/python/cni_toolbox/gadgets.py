@@ -1,6 +1,6 @@
 '''
 -----------------------------------------------------------------------------
-                                   LICENSE                             
+                                   LICENSE
 
 Copyright 2020 Mario Senden
 
@@ -18,15 +18,15 @@ You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 -----------------------------------------------------------------------------
-                                 DESCRPTION                   
+                                 DESCRPTION
 
-This module contains functions either to be used in conjunction with 
-the core tools of the CNI toolbox; or to be used by the tools but 
+This module contains functions either to be used in conjunction with
+the core tools of the CNI toolbox; or to be used by the tools but
 without being clearly assignable to one specific tool.
 
 '''
 
-import numpy as np 
+import numpy as np
 import scipy as sc
 from scipy.special import gamma
 
@@ -51,40 +51,39 @@ def two_gamma(timepoints):
 
 
 def regress(Y, X, l = 0.):
-
-    '''    
+    '''
     Parameters
     ----------
-    Y : floating point array (observations-by-outcomes)
+    Y: floating point array (observations-by-outcomes)
         outcome variables
-    X : floating pint array (observation-by-predictors)
+    X: floating pint array (observation-by-predictors)
         predictors
-    l : float
+    l: float
         (optional) ridge penalty parameter
 
     Returns
     -------
-    beta : floating point array (predictors-by-outcomes)
+    beta: floating point array (predictors-by-outcomes)
         beta coefficients
     '''
 
     if X.ndim>1:
         n_observations, n_predictors = X.shape
-    
+
     else:
         n_observations = X.size
         n_predictors = 1
-    
+
 
     if n_observations < n_predictors:
         U, D, V = np.linalg.svd(X, full_matrices = False)
-        
+
         D = np.diag(D)
         beta = np.matmul(
             np.matmul(
                 np.matmul(
                     np.matmul(
-                        V.transpose(), 
+                        V.transpose(),
                         sc.linalg.inv(
                             D**2 +
                             l * np.eye(n_observations))),
@@ -95,26 +94,26 @@ def regress(Y, X, l = 0.):
             np.matmul(
             sc.linalg.inv(
             np.matmul(X.transpose(), X) +
-            l * np.eye(n_predictors)), 
+            l * np.eye(n_predictors)),
             X.transpose()), Y)
-    
-    return beta 
+
+    return beta
 
 def correct_autocorr(X, W):
     '''
     Parameters
     ----------
-    X : floating point array (2D)
+    X: floating point array (2D)
         timecourses
-    W : floating point array (1D)
+    W: floating point array (1D)
         AR(2) model weights
 
     Returns
     -------
-    X_corrected : floating point array (2D)
+    X_corrected: floating point array (2D)
         timecourses corrected for autocorrelation
     '''
-    
+
     rows, cols = size(X, 2)
     X = np.reshape(X, (rows, cols))
     X_corrected = np.zeros((rows, cols))
@@ -124,27 +123,5 @@ def correct_autocorr(X, W):
         x_shift_2 = np.append(np.zeros(2), X[0:-2, j]).reshape(rows, -1)
         x_sliced = np.hstack([x_shift_0, x_shift_1, x_shift_2])
         X_corrected[:, j] = np.matmul(x_sliced, W)
-    
+
     return X_corrected
-
-def size(X, num_desired):
-    '''
-    Parameters
-    ----------
-    X : floating point array (of unknown dimension)
-    num_desired : integer
-        the number of dimensions for which once would like
-        to query the size
-
-    Returns
-    -------
-    output : integer array
-        size for each of num_desired dimensions
-
-    '''
-    num_existing = X.ndim
-    output = np.ones(num_desired).astype(int)
-    output[0:num_existing] = np.shape(X)
-    return output
-
-    
