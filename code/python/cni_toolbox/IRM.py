@@ -181,7 +181,7 @@ class IRM:
         for idx, key in enumerate(self.xdata):
             n_observations[idx] = np.size(self.xdata[key])
             
-        self.n_points = np.prod(n_observations)
+        self.n_points = np.prod(n_observations).astype(int)
         
         idx_all = np.arange(self.n_points)
         self.idx = np.zeros((self.n_points, self.n_predictors))
@@ -189,17 +189,18 @@ class IRM:
         for p in range(self.n_predictors):
             self.idx[:, p] = (idx_all // (np.prod(n_observations[p+1::]))) \
                 % n_observations[p]
-                
+        self.idx = self.idx.astype(int)       
         tc = np.zeros((self.n_samples + self.l_hrf,
                        self.n_points))
         x = np.zeros(self.n_predictors)
+        print('\ncreating timecourses')
         for j in range(self.n_points):
-            for p, key in enumerate(self.n_predictors):
-                x[p] = self.xdata[key](self.idx[j, p])
+            for p, key in enumerate(self.xdata):
+                x[p] = self.xdata[key][self.idx[j, p]]
             tc[0:self.n_samples, j] = FUN(self.stimulus, x)
             i = int(j / self.n_points * 21)
             sys.stdout.write('\r')
-            sys.stdout.write("creating timecourses [%-20s] %d%%" 
+            sys.stdout.write("[%-20s] %d%%" 
                    % ('='*i, 5*i))
 
         self.tc_fft = fft(tc, axis = 0)
@@ -241,7 +242,9 @@ class IRM:
         
             
         results = {'corr_fit': np.zeros(self.n_total)}
-        
+        for key in self.xdata:
+            results[key] = np.zeros(self.n_total)
+
         if self.hrf_fft.ndim==1:
             tc = np.transpose(
                 zscore(
@@ -251,6 +254,7 @@ class IRM:
                                             axis = 1), axis = 0)), axis = 0))
             tc = tc[:, 0:self.n_samples]
             mag_tc = np.sqrt(np.sum(tc**2, axis = 1))
+            print('\nmapping model parameters')
             for m in range(n_voxels):
                 v = voxel_index[m]
                 
@@ -266,7 +270,7 @@ class IRM:
 
                 i = int(m / n_voxels * 21)
                 sys.stdout.write('\r')
-                sys.stdout.write("irm mapping [%-20s] %d%%" 
+                sys.stdout.write("[%-20s] %d%%" 
                     % ('='*i, 5*i))
         
         else:
@@ -295,7 +299,7 @@ class IRM:
 
                 i = int(m / n_voxels * 21)
                 sys.stdout.write('\r')
-                sys.stdout.write("irm mapping [%-20s] %d%%" 
+                sys.stdout.write("[%-20s] %d%%" 
                     % ('='*i, 5*i))
         
     
