@@ -1,6 +1,6 @@
 '''
 -----------------------------------------------------------------------------
-                                   LICENSE                             
+                                   LICENSE
 
 Copyright 2020 Mario Senden
 
@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import cv2
 import glob
-import numpy as np 
+import numpy as np
 import tkinter as tk
 from tkinter import filedialog
 from scipy.stats import zscore
@@ -38,8 +38,7 @@ class pRF:
       - n_rows    : number of rows (in-plane resolution)
       - n_cols    : number of columns (in-plance resolution)
       - n_slices  : number of slices
-      - w_stimulus: width of stimulus images in pixels
-      - h_stimulus: height of stimulus images in pixels
+      - r_stimulus: resolution (=width=height) of stimulus in pixels
 
     Optional inputs are
       - hrf       : either a column vector containing a single hemodynamic
@@ -65,8 +64,8 @@ class pRF:
     2. prf.import_stimulus()
     3. prf.create_timecourses()
     4. results = prf.mapping(data)
-    ''' 
-    
+    '''
+
     def __init__(self, parameters, hrf = None):
         self.f_sampling = parameters['f_sampling']
         self.p_sampling = 1 / self.f_sampling
@@ -75,9 +74,8 @@ class pRF:
         self.n_cols = parameters['n_cols']
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
-        self.w_stimulus = parameters['w_stimulus']
-        self.h_stimulus = parameters['h_stimulus']
-        
+        self.r_stimulus = parameters['r_stimulus']:
+
         if hrf != None:
             self.l_hrf = hrf.shape[0]
             if hrf.ndim>2:
@@ -87,17 +85,17 @@ class pRF:
                                                 self.n_total)))),
                                    axis = 0)
             else:
-                self.hrf_fft = fft(np.append(hrf, 
+                self.hrf_fft = fft(np.append(hrf,
                                      np.zeros(self.n_samples)),
                                    axis = 0 )
         else:
             self.l_hrf = int(32 * self.f_sampling)
-            timepoints = np.arange(0, 
+            timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
-                                                      self.l_hrf) - 1, 
+                                                      self.l_hrf) - 1,
                                    self.p_sampling)
             self.hrf_fft = fft(two_gamma(timepoints), axis = 0)
-    
+
     @staticmethod
     def __gaussian__(mu_x, mu_y, sigma, x, y):
         '''
@@ -118,9 +116,9 @@ class pRF:
         -------
         floating point array
         '''
-    
+
         return np.exp( -((x - mu_x)**2 + (y - mu_y)**2) / (2 * sigma**2) )
-    
+
     def get_hrf(self):
         '''
         Returns
@@ -138,9 +136,9 @@ class pRF:
                     axis = 0)[0:self.l_hrf, :]
         else:
             hrf = ifft(self.hrf_fft, axis = 0)[0:self.l_hrf]
-        
+
         return np.abs(hrf)
-    
+
     def get_stimulus(self):
         '''
         Returns
@@ -150,12 +148,12 @@ class pRF:
         '''
 
         stimulus = np.reshape(self.stimulus[:, 0:self.n_samples],
-                          (self.h_stimulus,
-                           self.w_stimulus,
+                          (self.r_stimulus,
+                           self.r_stimulus,
                            self.n_samples))
-        
+
         return stimulus
-    
+
     def get_timecourses(self):
         '''
         Returns
@@ -163,9 +161,9 @@ class pRF:
         floating point array (time-by-gridsize)
             predicted timecourses
         '''
-        
+
         return np.abs(ifft(self.tc_fft, axis = 0)[0:self.n_samples, :])
-    
+
     def set_hrf(self, hrf):
         '''
         Parameters
@@ -181,53 +179,54 @@ class pRF:
                                                 self.n_total)))),
                                axis = 0)
         else:
-            self.hrf_fft = fft(np.append(hrf, 
+            self.hrf_fft = fft(np.append(hrf,
                                      np.zeros(self.n_samples)),
                                axis = 0)
-            
+
     def set_stimulus(self, stimulus):
         self.stimulus = np.zeros((self.n_samples + self.l_hrf,
                                   self.n_total))
         if stimulus.ndim==3:
             self.stimulus[0:self.n_samples,:] = np.reshape(stimulus,
-                    (self.w_stimulus * self.h_stimulus,
+                    (self.r_stimulus**2,
                     self.n_samples))
         else:
             self.stimulus[0:self.n_samples,:] = stimulus
-            
+
     def import_stimulus(self):
-        
+
         root = tk.Tk()
         stimulus_directory = ''.join(filedialog.askdirectory(
             title = 'Please select the stimulus directory'))
         root.destroy()
-        
+
         files = glob.glob('%s/*.png' % stimulus_directory)
-        
-        self.stimulus = np.zeros((self.h_stimulus,
-                                  self.w_stimulus,
+
+        self.stimulus = np.zeros((self.r_stimulus,
+                                  self.r_stimulus,
                                   self.n_samples))
-        
+
         for f in files:
             number = int(''.join([str(s) for s in f if s.isdigit()]))
             img = cv2.imread(f)
             self.stimulus[:, :, number] = img[:, :, 0]
-        
-        mn = np.min(self.stimulus)  
+
+        mn = np.min(self.stimulus)
         mx = np.max(self.stimulus)
         self.stimulus = (self.stimulus - mn) / (mx - mn)
-        
-        self.stimulus = np.reshape(self.stimulus,
-                                   (self.h_stimulus * self.w_stimulus,
-                                    self.n_samples))
-        
-        self.stimulus = np.hstack((self.stimulus,
-            np.zeros((self.h_stimulus * self.w_stimulus, self.l_hrf))))
 
-    def create_timecourses(self, max_radius = 10.0, n_xy = 30,
+        self.stimulus = np.reshape(self.stimulus,
+                                   (self.r_stimulus**2,
+                                    self.n_samples))
+
+        self.stimulus = np.hstack((self.stimulus,
+            np.zeros((self.r_stimulus**2, self.l_hrf))))
+
+    def create_timecourses(self, max_radius = 10.0, num_xy = 30,
                            min_slope = 0.1, max_slope = 1.2,
-                           n_slope = 10, css_exponent = 1, sampling = 'log'):
-        ''' 
+                           num_slope = 10, css_exponent = 1,
+                           sampling = 'log'):
+        '''
         creates predicted timecourses based on the effective stimulus
         and a range of isotropic receptive fields.
         Isotropic receptive fields are generated for a grid of
@@ -236,67 +235,67 @@ class pRF:
         optional inputs are
          - max_radius: float
              radius of the field of fiew     (default = 10.0)
-         - n_xy: integer
+         - num_xy: integer
              steps in x and y direction      (default = 30)
-         - min_slope: float 
+         - min_slope: float
              lower bound of RF size slope    (default = 0.1)
          - max_slope: float
              upper bound of RF size slope    (default = 1.2)
-         - n_slope: integer
+         - num_slope: integer
              steps from lower to upper bound (default = 10)
          - css_exponent: float
              compressive spatial summation   (default = 1)
          - sampling: string
              eccentricity sampling           (default = log)
         '''
-        
-        self.n_points = (n_xy**2) * n_slope
-        
-        h_ones = np.ones(self.h_stimulus)
-        w_ones = np.ones(self.w_stimulus)
-        h_values = np.linspace(max_radius, -max_radius, self.h_stimulus)
-        w_values = np.linspace(-max_radius, max_radius, self.w_stimulus)
-        x_coordinates = np.outer(h_ones, w_values)
-        y_coordinates = np.outer(h_values, w_ones)
-        
-        x_coordinates = np.reshape(x_coordinates, self.w_stimulus*self.h_stimulus)
-        y_coordinates = np.reshape(y_coordinates, self.w_stimulus*self.h_stimulus)
-        
-        idx_all = np.arange(self.n_points)
-        self.idx = np.array([idx_all // (n_slope * n_xy),
-                             (idx_all // n_slope) % n_xy,
-                             idx_all % n_slope]).transpose()
-                
-        n_lower = int(np.ceil(n_xy/2))
-        n_upper = int(np.floor(n_xy/2))
-        if sampling == 'log':
-            self.ecc = np.exp(np.linspace(np.log(0.1), np.log(max_radius), n_xy))
-        elif sampling == 'linear':
-            self.ecc = np.linspace(0.1, max_radius, n_xy)
 
-        self.pa = np.linspace(0, (n_xy - 1) / n_xy * 2 * np.pi, n_xy)
-        self.slope = np.linspace(min_slope, max_slope, n_slope)
-            
+        self.n_points = (num_xy**2) * num_slope
+
+        r_ones = np.ones(self.r_stimulus)
+
+        h_values = np.linspace(max_radius, -max_radius, self.r_stimulus)
+        w_values = np.linspace(-max_radius, max_radius, self.r_stimulus)
+        x_coordinates = np.outer(r_ones, w_values)
+        y_coordinates = np.outer(h_values, r_ones)
+
+        x_coordinates = np.reshape(x_coordinates, self.r_stimulus**2)
+        y_coordinates = np.reshape(y_coordinates, self.r_stimulus**2)
+
+        idx_all = np.arange(self.n_points)
+        self.idx = np.array([idx_all // (num_slope * num_xy),
+                             (idx_all // num_slope) % num_xy,
+                             idx_all % num_slope]).transpose()
+
+        n_lower = int(np.ceil(num_xy/2))
+        n_upper = int(np.floor(num_xy/2))
+        if sampling == 'log':
+            self.ecc = np.exp(np.linspace(np.log(0.1), np.log(max_radius), num_xy))
+        elif sampling == 'linear':
+            self.ecc = np.linspace(0.1, max_radius, num_xy)
+
+        self.pa = np.linspace(0, (num_xy - 1) / num_xy * 2 * np.pi, num_xy)
+        self.slope = np.linspace(min_slope, max_slope, num_slope)
+
         W = np.zeros((self.n_points,
-                self.w_stimulus * self.h_stimulus)) 
+                self.r_stimulus**2))
         print('\ncreating timecourses')
         for p in range(self.n_points):
             x = np.cos(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             y = np.sin(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             sigma = self.ecc[self.idx[p, 1]] * self.slope[self.idx[p, 2]]
             W[p, :] = self.__gaussian__(x, y, sigma, x_coordinates,y_coordinates)
-            
+
             i = int(p / self.n_points * 19)
             sys.stdout.write('\r')
-            sys.stdout.write("[%-20s] %d%%" 
+            sys.stdout.write("[%-20s] %d%%"
                    % ('='*i, 5*i))
-            
+
         tc = (np.matmul(W, self.stimulus).transpose())**css_exponent
         sys.stdout.write('\r')
         sys.stdout.write("[%-20s] %d%%" % ('='*20, 100))
-        self.tc_fft = fft(tc, axis = 0) 
-      
-        
+        self.tc_fft = fft(tc, axis = 0)
+
+
     def mapping(self, data, threshold = 100, mask = []):
         '''
         identifies the best fitting timecourse for each voxel and
@@ -310,25 +309,25 @@ class pRF:
 
         The dimension of each field corresponds to the dimensions
         of the data.
- 
+
         Required inputs are
         - data : floating point array
             empirically observed BOLD timecourses
             whose rows correspond to time (volumes).
 
- 
+
         Optional inputs are
          - threshold: float
              minimum voxel intensity (default = 100.0)
-         - mask: boolean array 
-             binary mask for selecting voxels (default = None) 
+         - mask: boolean array
+             binary mask for selecting voxels (default = None)
         '''
-        data = np.reshape(data.astype(float), 
+        data = np.reshape(data.astype(float),
                         (self.n_samples,
                         self.n_total))
-        
-        mean_signal = np.mean(data, axis = 0) 
-        
+
+        mean_signal = np.mean(data, axis = 0)
+
         if np.size(mask)==0:
                 mask = mean_signal >= threshold
 
@@ -338,13 +337,13 @@ class pRF:
         n_voxels = voxel_index.size
 
         mag_d = np.sqrt(np.sum(data**2, axis = 0))
-        
-            
+
+
         results = {'corr_fit': np.zeros(self.n_total),
                    'mu_x': np.zeros(self.n_total),
                    'mu_y': np.zeros(self.n_total),
                    'sigma': np.zeros(self.n_total)}
-        
+
         print('\nmapping receptive fields')
         if self.hrf_fft.ndim==1:
             tc = np.transpose(
@@ -357,11 +356,11 @@ class pRF:
             mag_tc = np.sqrt(np.sum(tc**2, axis = 1))
             for m in range(n_voxels):
                 v = voxel_index[m]
-                
+
                 CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
                 idx_remove = (CS == np.Inf)| (CS == np.NaN);
                 CS[idx_remove] = 0
-                
+
                 results['corr_fit'][v] = np.max(CS)
                 idx_best = np.argmax(CS)
 
@@ -371,30 +370,30 @@ class pRF:
                         self.ecc[self.idx[idx_best, 1]]
                 results['sigma'][v] = self.ecc[self.idx[idx_best, 1]] * \
                         self.slope[self.idx[idx_best, 2]]
-                    
+
                 i = int(m / n_voxels * 21)
                 sys.stdout.write('\r')
-                sys.stdout.write("[%-20s] %d%%" 
+                sys.stdout.write("[%-20s] %d%%"
                     % ('='*i, 5*i))
-        
+
         else:
             for m in range(n_voxels):
                 v = voxel_index[m]
-                    
+
                 tc = np.transpose(
                     zscore(
                         np.abs(
                             ifft(self.tc_fft *
                                  np.expand_dims(self.hrf_fft[:, v],
                                                 axis = 1), axis = 0)), axis = 0))
-                
+
                 tc = tc[:, 0:self.n_samples]
                 mag_tc = np.sqrt(np.sum(tc**2, axis = 1))
-                    
+
                 CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
                 idx_remove = (CS == np.Inf) | (CS == np.NaN)
                 CS[idx_remove] = 0
-                
+
                 results['corr_fit'][v] = np.max(CS)
                 idx_best = np.argmax(CS)
 
@@ -404,21 +403,19 @@ class pRF:
                         self.ecc[self.idx[idx_best, 1]]
                 results['sigma'][v] = self.ecc[self.idx[idx_best, 1]] * \
                         self.slope[self.idx[idx_best, 2]]
-        
-                i = int(m / n_voxels * 21) 
-            
+
+                i = int(m / n_voxels * 21)
+
         for key in results:
             results[key] = np.squeeze(
             np.reshape(results[key],
                        (self.n_rows,
                         self.n_cols,
                         self.n_slices)))
-            
+
         results['eccentricity'] = np.abs(results['mu_x'] +
                                          results['mu_y'] * 1j)
         results['polar_angle'] = np.angle(results['mu_x'] +
                                           results['mu_y'] * 1j)
-       
+
         return results
-        
-                         
