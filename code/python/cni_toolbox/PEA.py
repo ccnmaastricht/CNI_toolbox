@@ -1,6 +1,6 @@
 '''
 -----------------------------------------------------------------------------
-                                   LICENSE                             
+                                   LICENSE
 
 Copyright 2020 Mario Senden
 
@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
 import sys
-import numpy as np 
+import numpy as np
 from scipy.stats import zscore, f
 from cni_toolbox.gadgets import regress, correct_autocorr
 
@@ -36,7 +36,7 @@ class PEA:
     - n_cols    : number of columns (in-plance resolution)
     - n_slices  : number of slices
 
-    This class has the following function
+    This class has the following functions
     - PEA.set_delay(delay)
     - PEA.set_direction(direction)
     - results = PEA.fitting(data)
@@ -47,7 +47,7 @@ class PEA:
     3. pea.set_direction(direction)
     4. results = pea.fitting(data)
     '''
-    
+
     def __init__(self, parameters):
         self.f_sampling = parameters['f_sampling']
         self.f_stim = parameters['f_stim']
@@ -57,20 +57,20 @@ class PEA:
         self.n_cols = parameters['n_cols']
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
-        self.time = np.arange(0, self.p_sampling * self.n_samples - 1, self.p_sampling) 
+        self.time = np.arange(0, self.p_sampling * self.n_samples - 1, self.p_sampling)
         self.delay = 0.0
         self.direction = 1
-   
+
 
     def set_delay(self, delay):
         '''
         Parameters
         ----------
-        delay : float
+        delay: float
             delay in traveing wave caused by hemodynamic response
         '''
         self.delay = delay
-        
+
     def set_direction(self, direction):
         '''
         provide a direction of motion for the class.
@@ -79,7 +79,7 @@ class PEA:
         Contracting rings are also considered to move clockwise (-1)
         while expanding rings are considered to move counterclockwise (1).
         '''
-            
+
         if direction=='cw':
                 self.direction = -1
         elif direction=='ccw':
@@ -92,7 +92,7 @@ class PEA:
         '''
         Parameters
         ----------
-        data : floating point array 
+        data: floating point array
             empirically observed BOLD timecourses
             whose rows correspond to time (volumes).
 
@@ -104,11 +104,13 @@ class PEA:
                 - f_statistic
                 - p_value
         '''
+        print('\nperforming analysis')
+
         F = np.exp(self.direction * 2j * np.pi * self.f_stim * (self.time-self.delay))
         X = zscore(np.array([np.real(F), np.imag(F)]).transpose())
-        
+
         data = np.reshape(
-                        data.astype(float), 
+                        data.astype(float),
                         (self.n_samples,
                         self.n_total))
 
@@ -132,45 +134,41 @@ class PEA:
                    'p_value': np.zeros(self.n_total)}
         df1 = 1.0
         df2 = self.n_samples-2.0
-        print('\nperforming analysis') 
+
         for m in range(n_voxels):
             v = voxel_index[m]
-                
-                    
+
             # estimate and correct for autocorrelation
-            T = np.array([np.append(0,residuals[0:-1, m]), 
+            T = np.array([np.append(0,residuals[0:-1, m]),
                               np.append(np.zeros(2), residuals[0:-2, m])]).transpose()
             W = np.append(1, -regress(residuals[:, m], T))
-                
+
             X_corrected = correct_autocorr(X, W)
             D_corrected = correct_autocorr(data[:,m], W)
             #---------------------------------------------------------------------
-                    
+
             beta_corrected = regress(D_corrected, X_corrected)
             Y_ = np.matmul(X_corrected, beta_corrected)
             mu = np.mean(D_corrected, axis = 0);
             MSM = np.dot((Y_ - mu).transpose(), Y_ - mu) / df1
             MSE = np.dot((Y_ - D_corrected).transpose(), Y_ - D_corrected) / df2
-            beta_complex = beta_corrected[0] + beta_corrected[1] * 1j 
+            beta_complex = beta_corrected[0] + beta_corrected[1] * 1j
             results['phase'][v] = np.angle(beta_complex)
             results['amplitude'][v] = np.abs(beta_complex)
             results['f_stat'][v] = MSM / MSE;
             results['p_value'][v] = max(1-f.cdf(MSM / MSE, df1, df2), 1e-20)
-                
-                
+
+
             i = int(m / n_voxels * 21)
             sys.stdout.write('\r')
-            sys.stdout.write("[%-20s] %d%%" 
+            sys.stdout.write("[%-20s] %d%%"
                                  % ('='*i, 5*i))
-                
-        for key in results:   
+
+        for key in results:
             results[key] = np.squeeze(
                 np.reshape(results[key],
                            (self.n_rows,
                             self.n_cols,
                             self.n_slices)))
-                           
-        return results
-            
 
-        
+        return results
