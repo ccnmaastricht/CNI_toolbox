@@ -226,7 +226,7 @@ class pRF:
 
     def create_timecourses(self, max_radius = 10.0, n_xy = 30,
                            min_slope = 0.1, max_slope = 1.2,
-                           n_slope = 10):
+                           n_slope = 10, css_exponent = 1, sampling = 'log'):
         ''' 
         creates predicted timecourses based on the effective stimulus
         and a range of isotropic receptive fields.
@@ -244,6 +244,10 @@ class pRF:
              upper bound of RF size slope    (default = 1.2)
          - n_slope: integer
              steps from lower to upper bound (default = 10)
+         - css_exponent: float
+             compressive spatial summation   (default = 1)
+         - sampling: string
+             eccentricity sampling           (default = log)
         '''
         
         self.n_points = (n_xy**2) * n_slope
@@ -265,7 +269,11 @@ class pRF:
                 
         n_lower = int(np.ceil(n_xy/2))
         n_upper = int(np.floor(n_xy/2))
-        self.ecc = np.exp(np.linspace(np.log(0.1), np.log(max_radius), n_xy))
+        if sampling == 'log':
+            self.ecc = np.exp(np.linspace(np.log(0.1), np.log(max_radius), n_xy))
+        elif sampling == 'linear':
+            self.ecc = np.linspace(0.1, max_radius, n_xy)
+
         self.pa = np.linspace(0, (n_xy - 1) / n_xy * 2 * np.pi, n_xy)
         self.slope = np.linspace(min_slope, max_slope, n_slope)
             
@@ -283,7 +291,7 @@ class pRF:
             sys.stdout.write("[%-20s] %d%%" 
                    % ('='*i, 5*i))
             
-        tc = np.matmul(W, self.stimulus).transpose()
+        tc = (np.matmul(W, self.stimulus).transpose())**css_exponent
         sys.stdout.write('\r')
         sys.stdout.write("[%-20s] %d%%" % ('='*20, 100))
         self.tc_fft = fft(tc, axis = 0) 
@@ -313,7 +321,7 @@ class pRF:
          - threshold: float
              minimum voxel intensity (default = 100.0)
          - mask: boolean array 
-             binary mask for selecting voxels (default = None)
+             binary mask for selecting voxels (default = None) 
         '''
         data = np.reshape(data.astype(float), 
                         (self.n_samples,
