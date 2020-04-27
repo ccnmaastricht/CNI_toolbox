@@ -25,8 +25,8 @@ classdef pRF < handle
     %
     % Population receptive field (pRF) mapping tool.
     %
-    % prf = pRF(params) creates an instance of the pRF class.
-    % params is a structure with 7 required fields
+    % prf = pRF(parameters) creates an instance of the pRF class.
+    % parameters is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
     %   - n_rows    : number of rows (in-plane resolution)
@@ -57,7 +57,7 @@ classdef pRF < handle
     % (e.g. help pRF.mapping)
     %
     % typical workflow:
-    % 1. prf = pRF(params);
+    % 1. prf = pRF(parameters);
     % 2. prf.import_stimulus();
     % 3. prf.create_timecourses();
     % 4. results = prf.mapping(data);
@@ -92,12 +92,12 @@ classdef pRF < handle
     
     methods (Access = public)
         
-        function self = pRF(params,varargin)
+        function self = pRF(parameters,varargin)
             % constructor
             p = inputParser;
-            addRequired(p,'params',@isstruct);
+            addRequired(p,'parameters',@isstruct);
             addOptional(p,'hrf',[]);
-            p.parse(params,varargin{:});
+            p.parse(parameters,varargin{:});
             
             self.is = 'pRF mapping tool';
             
@@ -106,14 +106,14 @@ classdef pRF < handle
             self.gauss = @(mu_x,mu_y,sigma,X,Y) exp(-((X-mu_x).^2+...
                 (Y-mu_y).^2)/(2*sigma^2));
             
-            self.f_sampling = p.Results.params.f_sampling;
+            self.f_sampling = p.Results.parameters.f_sampling;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = p.Results.params.n_samples;
-            self.n_rows = p.Results.params.n_rows;
-            self.n_cols = p.Results.params.n_cols;
-            self.n_slices = p.Results.params.n_slices;
+            self.n_samples = p.Results.parameters.n_samples;
+            self.n_rows = p.Results.parameters.n_rows;
+            self.n_cols = p.Results.parameters.n_cols;
+            self.n_slices = p.Results.parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
-            self.r_stimulus = p.Results.params.r_stimulus;
+            self.r_stimulus = p.Results.parameters.r_stimulus;
             
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
@@ -237,10 +237,10 @@ classdef pRF < handle
             %
             % optional inputs are
             %  - max_radius  : radius of the field of fiew     (default =  10.0)
-            %  - num_xy   : steps in x and y direction      (default =  30.0)
+            %  - num_xy      : steps in x and y direction      (default =  30.0)
             %  - min_slope   : lower bound of RF size slope    (default =   0.1)
             %  - max_slope   : upper bound of RF size slope    (default =   1.2)
-            %  - num_slope: steps from lower to upper bound (default =  10.0)
+            %  - num_slope   : steps from lower to upper bound (default =  10.0)
             
             text = 'creating timecourses...';
             fprintf('%s\n',text)
@@ -252,12 +252,12 @@ classdef pRF < handle
             addOptional(p,'num_slope',10);
             addOptional(p,'min_slope',0.1);
             addOptional(p,'max_slope',1.2);
-            addoptional(p,'css_exponent',1);
-            addoptional(p,'sampling','log');
+            addOptional(p,'css_exponent',1);
+            addOptional(p,'sampling','log');
             p.parse(varargin{:});
             
             num_xy = p.Results.num_xy;
-            max_r = p.Results.max_radius;
+            max_radius = p.Results.max_radius;
             num_slope = p.Results.num_slope;
             min_slope = p.Results.min_slope;
             max_slope = p.Results.max_slope;
@@ -265,13 +265,13 @@ classdef pRF < handle
             sampling = p.Results.sampling;
             self.n_points = num_xy^2 * num_slope;
             
-            X_ = ones(self.r_stimulus,1) * linspace(-max_r,...
-                max_r,self.r_stimulus);
-            Y_ = -linspace(-max_r,max_r,...
+            X_ = ones(self.r_stimulus,1) * linspace(-max_radius,...
+                max_radius,self.r_stimulus);
+            Y_ = -linspace(-max_radius,max_radius,...
                 self.r_stimulus)' * ones(1,self.r_stimulus);
             
-            X_ = reshape(X_,self.r_stimulus^2,1);
-            Y_ = reshape(Y_,self.r_stimulus^2,1);
+            X_ = X_(:);
+            Y_ = Y_(:);
             
             i = (0:self.n_points-1)';
             self.idx = [floor(i/(num_xy*num_slope))+1,...
@@ -342,7 +342,7 @@ classdef pRF < handle
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
-            data = zscore(data);
+            
             
             if isempty(mask)
                 mask = mean_signal>=threshold;
@@ -351,13 +351,13 @@ classdef pRF < handle
             voxel_index = find(mask);
             n_voxels = numel(voxel_index);
             
-            mag_d = sqrt(sum(data(:,mask).^2));
+            data = zscore(data(:,mask));
+            mag_d = sqrt(sum(data.^2));
             
             results.corr_fit = zeros(self.n_total,1);
             results.mu_x = zeros(self.n_total,1);
             results.mu_y = zeros(self.n_total,1);
             results.sigma = zeros(self.n_total,1);
-            
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
@@ -368,7 +368,7 @@ classdef pRF < handle
                 for m=1:n_voxels
                     v = voxel_index(m);
                     
-                    CS = (tc*data(:,v))./...
+                    CS = (tc*data(:,m))./...
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
@@ -383,17 +383,15 @@ classdef pRF < handle
                     waitbar(v/n_voxels,wb)
                 end
             else
-                hrf_fft_all = fft([self.hrf;...
-                    zeros(self.n_samples-self.l_hrf,self.n_total)]);
+                hrf_fft_all = fft([self.hrf(:,mask);...
+                    zeros(self.n_samples-self.l_hrf,n_voxels)]);
                 for m=1:n_voxels
                     v = voxel_index(m);
                     
-                    hrf_fft = repmat(hrf_fft_all(:,v),...
-                        [1,self.n_points]);
-                    tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                    tc = zscore(ifft(self.tc_fft.*hrf_fft_all(:,m)))';
                     mag_tc = sqrt(sum(tc.^2,2));
                     
-                    CS = (tc*data(:,v))./...
+                    CS = (tc*data(:,m))./...
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
