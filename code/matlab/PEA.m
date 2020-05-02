@@ -25,8 +25,8 @@ classdef PEA < handle
     %
     % Phase-encoding analysis tool.
     %
-    % pea = PEA(params) creates an instance of the PEA class.
-    % params is a structure with 7 required fields
+    % pea = PEA(parameters) creates an instance of the PEA class.
+    % parameters is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - f_stim    : stimulation frequency
     %   - n_samples : number of samples (volumes)
@@ -46,7 +46,7 @@ classdef PEA < handle
     % function (e.g. help PEA.fitting)
     %
     % typical workflow:
-    % 1. pea = PEA(params);
+    % 1. pea = PEA(parameters);
     % 2. pea.set_delay(delay);
     % 3. pea.set_direction(direction);
     % 4. results = pea.fitting(data);
@@ -74,17 +74,17 @@ classdef PEA < handle
     
     methods (Access = public)
         
-        function self = PEA(params)
+        function self = PEA(parameters)
             % constructor
             self.is = 'PEA tool';
             
-            self.f_sampling = params.f_sampling;
-            self.f_stim = params.f_stim;
+            self.f_sampling = parameters.f_sampling;
+            self.f_stim = parameters.f_stim;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = params.n_samples;
-            self.n_rows = params.n_rows;
-            self.n_cols = params.n_cols;
-            self.n_slices = params.n_slices;
+            self.n_samples = parameters.n_samples;
+            self.n_rows = parameters.n_rows;
+            self.n_cols = parameters.n_cols;
+            self.n_slices = parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             self.t = (0:self.p_sampling:self.p_sampling*self.n_samples-1);
             self.delay = 0;
@@ -132,7 +132,7 @@ classdef PEA < handle
             end
         end
         
-        function results = fitting(self,data)
+        function results = fitting(self,data,varargin)
             % identifies phase and amplitude at stimulation frequency for
             % each voxel and returns a structure with the following fields
             %  - Phase
@@ -146,17 +146,47 @@ classdef PEA < handle
             % required inputs are
             %  - data  : a matrix of empirically observed BOLD timecourses
             %            whose columns correspond to time (volumes).
+            %
+            % optional inputs are
+            %  - threshold: minimum voxel intensity (default = 100.0)
+            %  - mask     : binary mask for selecting voxels
             
             text = 'performing phase encoding analysis...';
             fprintf('%s\n',text)
             wb = waitbar(0,text,'Name',self.is);
             
+            p = inputParser;
+            addRequired(p,'data',@isnumeric);
+            addOptional(p,'threshold',100);
+            addOptional(p,'mask',[]);
+            p.parse(data,varargin{:});
+            
+            data = single(p.Results.data);
+            threshold = p.Results.threshold;
+            mask = p.Results.mask;
+            
             F = exp(self.direction*2i*pi*self.f_stim*(self.t-self.delay));
             X = zscore([real(F)',imag(F)']);
-            XX = (X'*X)\X';
-            data = zscore(reshape(single(data(1:self.n_samples,:,:,:)),...
-                self.n_samples,self.n_total));
-            std_signal = std(data);
+            
+            data = reshape(single(data(1:self.n_samples,:,:,:)),...
+                self.n_samples,self.n_total);
+            
+            mean_signal = mean(data);
+            
+            if isempty(mask)
+                mask = mean_signal>=threshold;
+            end
+            mask = mask(:);
+            voxel_index = find(mask);
+            n_voxels = numel(voxel_index);
+            
+            data = zscore(data(:, mask));
+            
+            beta = (X' * X) \ X' * data;
+            
+            Y_ = X * beta;
+            residuals = data - Y_;
+            
             results.Phase = zeros(self.n_total,1);
             results.Amplitude = zeros(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
@@ -164,32 +194,29 @@ classdef PEA < handle
             
             df1 = 1;
             df2 = self.n_samples-2;
-            for v=1:self.n_total
-                if std_signal>0
-                    b = XX * data(:,v);
-                    y = X*b;
-                    
-                    % estimate and correct for autocorrelation
-                    r = data(:,v) - y;
-                    T = [[0;r(1:end-1)],[zeros(2,1);r(1:end-2)]];
-                    W = [1; -((T'* T) \ T' * r)];
-                    Xc(:,1) = [X(:,1),[0;X(1:end-1,1)],[zeros(2,1);X(1:end-2,1)]] * W;
-                    Xc(:,2) = [X(:,2),[0;X(1:end-1,2)],[zeros(2,1);X(1:end-2,2)]] * W;
-                    Dc = [data(:,v),[0;data(1:end-1,v)],[zeros(2,1);data(1:end-2,v)]] * W;
-                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                    
-                    b = (Xc' * Xc) \ Xc' * Dc;
-                    y = Xc * b;
-                    mu = mean(DC);
-                    MSM = (y-mu)'*(y-mu)/df1;
-                    MSE = (y-Dc)'*(y-Dc)/df2;
-                    
-                    results.Phase(v) = angle(b(1)+b(2)*1i);
-                    results.Amplitude(v) = abs(b(1)+b(2)*1i);
-                    results.F_stat(v) = MSM/MSE;
-                    results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
-                end
-                waitbar(v/self.n_total,wb)
+            for m=1:n_voxels
+                v = voxel_index(m);
+                
+                % estimate and correct for autocorrelation
+                T = [[0;residuals(1:end-1,m)],[zeros(2,1); residuals(1:end-2,m)]];
+                W = [1; -((T'* T) \ T' * residuals(:,m))];
+                Xc(:,1) = [X(:,1), [0;X(1:end-1,1)], [zeros(2,1);X(1:end-2,1)]] * W;
+                Xc(:,2) = [X(:,2), [0;X(1:end-1,2)], [zeros(2,1);X(1:end-2,2)]] * W;
+                Dc = [data(:,m), [0;data(1:end-1,m)], [zeros(2,1);data(1:end-2,m)]] * W;
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                
+                b = (Xc' * Xc) \ Xc' * Dc;
+                y = Xc * b;
+                mu = mean(DC);
+                MSM = (y-mu)'*(y-mu)/df1;
+                MSE = (y-Dc)'*(y-Dc)/df2;
+                
+                results.Phase(v) = angle(b(1)+b(2)*1i);
+                results.Amplitude(v) = abs(b(1)+b(2)*1i);
+                results.F_stat(v) = MSM/MSE;
+                results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
+                
+                waitbar(m/n_voxels,wb)
             end
             
             results.Phase = reshape(results.Phase,...
