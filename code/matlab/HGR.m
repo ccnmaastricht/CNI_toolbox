@@ -33,7 +33,7 @@ classdef HGR < handle
         two_gamma        % two gamma hrf function
 
         % parameters
-        r_sampling       % sampling rate
+        p_sampling       % sampling rate
         r_stimulus       % stimulus width & height
         n_pixels         % total number of pixels
         n_features       % number of features
@@ -81,7 +81,7 @@ classdef HGR < handle
             self.gauss = @(mu_x,mu_y,sigma,X,Y) exp(-((X - mu_x).^2 +...
                 (Y - mu_y).^2) ./ (2 * sigma.^2));
 
-            self.r_sampling = parameters.r_sampling;
+            self.p_sampling = 1 / parameters.f_sampling;
             self.r_stimulus = parameters.r_stimulus;
             self.n_pixels = self.r_stimulus^2;
             self.n_features = parameters.n_features;
@@ -92,7 +92,7 @@ classdef HGR < handle
             self.lambda = 1 / self.eta;
             self.create_gamma();
             self.theta = zeros(self.n_features,self.n_voxels);
-            self.kernel = self.two_gamma(0:self.r_sampling:...
+            self.kernel = self.two_gamma(0:self.p_sampling:...
                 self.l_kernel - 1)';
             self.step = 1;
             self.mean = zeros(1,self.n_features);
@@ -324,7 +324,7 @@ classdef HGR < handle
         function x_conv = convolution(self, x)
             n_samples = size(x, 1);
             kernel = [self.kernel; zeros(n_samples, 1)];
-            x = [x; zeros(ceil(self.l_kernel / self.r_sampling), self.n_features)];
+            x = [x; zeros(ceil(self.l_kernel / self.p_sampling), self.n_features)];
             x_conv = ifft(fft(x) .* fft(kernel));
             x_conv = x_conv(1:n_samples, :);
         end
