@@ -3,10 +3,10 @@ classdef HGR < handle
     % %%%                               LICENSE                             %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-    % Copyright 2019 Salil Bhat & Mario Senden
+    % Copyright 2020 Salil Bhat & Mario Senden
     %
     % This program is free software: you can redistribute it and/or modify
-    % it under the terms of the GNU Lesser General Public License as published
+    % it under the terms of the GNU Lesser General Public License as tpublished
     % by the Free Software Foundation, either version 3 of the License, or
     % (at your option) any later version.
     %
@@ -23,14 +23,50 @@ classdef HGR < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-
+    %
+    % Population receptive field (presults) mapping tool.
+    %
+    % hgr = HGR(parameters) creates an instance of the HGR class.
+    %
+    % parameters is a structure with 7 required fields
+    %   - f_sampling : sampling frequency (1/TR)
+    %   - r_stimulus : width & height of stimulus images in pixels
+    %   - n_features : number of features (hashed Gaussians)
+    %   - n_gaussians: number of Gaussians per feature
+    %   - n_voxels   : total number of voxels in data
+    %   - fwhm       : full width at half maximum of Gaussians
+    %   - eta        : learning rate (inverse of regularization parameter)
+    %
+    % optional inputs are
+    %   - l_kernel   : length of convolution kernel (two-gamma hresults)
+    %
+    % this class has the following functions
+    %
+    %   - [mask, corr_fit] = HGR.get_best_voxels(data, stimulus);
+    %   - gamma = HGR.get_features();
+    %   - results = HGR.get_parameters();
+    %   - theta = HGR.get_weights();
+    %   - tc = HGR.get_timecourses();
+    %   - HGR.set_parameters(parameters);
+    %   - HGR.reset();
+    %   - HGR.ridge(data, stimulus);
+    %   - HGR.update(data, stimulus);
+    %
+    % use help HGR.function to get more detailed help on any specific function
+    % (e.g. help HGR.ridge)
+    %
+    % typical offline workflow:
+    % 1. hgr = HGR(parameters);
+    % 2. hgr.ridge(data, stimulus);
+    % 3. hgr.get_parameters();
+    
     properties (Access = private)
 
         is
 
         % functions
         gauss            % 2D Gaussian function
-        two_gamma        % two gamma hrf function
+        two_gamma        % two gamma hresults function
 
         % parameters
         p_sampling       % sampling rate
@@ -102,6 +138,14 @@ classdef HGR < handle
         end
 
         function update(self,data,stimulus)
+            % peresultsorms a single gradient descent update based on current
+            % time point's data and stimulus. Online convolution and
+            % z-normalization is handled internally.  
+            %
+            % required inputs are
+            %  - data    : a row vector of observed BOLD activation levels 
+            %              per voxel.
+            %  - stimulus: a row vector of pixel intensities.
             phi = stimulus * self.gamma;
             phi_conv = self.convolution_step(phi);
             self.phi = self.zscore_step(phi_conv);
@@ -110,41 +154,72 @@ classdef HGR < handle
         end
 
         function ridge(self,data,stimulus)
+            % peresultsorms ridge regression with stimulus encoded by hashed
+            % Gaussians as predictors.
+            %
+            % required inputs are
+            %  - data    : a matrix of empirically observed BOLD timecourses
+            %              whose rows correspond to time (volumes).
+            %  - stimulus: a time by number of pixels stimulus matrix.
             I = eye(self.n_features) * self.lambda;
             self.phi = zscore(self.convolution(stimulus * self.gamma));
             self.theta = (self.phi' * self.phi + I) \ self.phi' * data;
         end
 
         function gamma = get_features(self)
+            % returns hashed Gaussians as a number of pixels by number of
+            % features matrix.
             gamma = self.gamma;
         end
 
         function theta = get_weights(self)
+            % returns learned regression weights as a number of features by
+            % number of voxels matrix.
             theta = self.theta;
         end
 
-        function rf = get_parameters(self,varargin)
+        function results = get_parameters(self,varargin)
+            % estimates population receptive field (2D Gaussian) parameters
+            % based on raw receptive fields given by features and their
+            % regression weights.
+            %
+            % returns a structure with the following fields
+            %  - corr_fit
+            %  - mu_x
+            %  - mu_y
+            %  - sigma
+            %  - eccentricity
+            %  - polar_angle
+            %
+            % each field is a column vector with number of voxels elements
+            %
+            % optional inputs are
+            %  - s_batch   : batch size                       (default = 10000)
+            %  - max_radius: radius of measured visual field  (default =    10)
+            %  - alpha     : shrinkage parameter              (default =     1)
+            %  - mask      : binary mask for selecting voxels
+            
+            progress('estimating presults parameters')
+            
             p = inputParser;
             addOptional(p,'mask',true(self.n_voxels,1));
             addOptional(p,'s_batch',10000);
             addOptional(p,'max_radius',10);
             addOptional(p,'alpha',1);
-            addOptional(p,'silent',false);
             p.parse(varargin{:});
             msk = p.Results.mask;
             s_batch = p.Results.s_batch;
             max_radius = p.Results.max_radius;
             alpha = p.Results.alpha;
-            silent = p.Results.silent;
 
 
             idx = (1:self.n_voxels)';
             idx = idx(msk);
             n_msk = sum(msk);
 
-            rf.mu_x = nan(self.n_voxels,1);
-            rf.mu_y = nan(self.n_voxels,1);
-            rf.sigma = nan(self.n_voxels,1);
+            results.mu_x = nan(self.n_voxels,1);
+            results.mu_y = nan(self.n_voxels,1);
+            results.sigma = nan(self.n_voxels,1);
 
             Y = linspace(max_radius, -max_radius, self.r_stimulus)' * ones(1,self.r_stimulus);
             X = ones(self.r_stimulus, 1) * linspace(-max_radius, max_radius, self.r_stimulus);
@@ -168,10 +243,6 @@ classdef HGR < handle
             P = [I, R];
             beta = (P' * P) \ P' * S;
 
-            if ~silent
-                text = 'estimating pRF parameters...';
-                wb = waitbar(0,text,'Name',self.is);
-            end
             for v=0:s_batch:n_msk-s_batch
                 batch = idx(v+1:v+s_batch);
                 im = self.gamma * self.theta(:,batch);
@@ -182,14 +253,14 @@ classdef HGR < handle
                 m_image = mean(im)';
                 cx = floor((pos-1) / self.r_stimulus);
                 cy = mod(pos-1, self.r_stimulus);
-                rf.mu_x(batch) = cx / self.r_stimulus * max_radius * 2 - max_radius;
-                rf.mu_y(batch) = -(cy / self.r_stimulus * max_radius * 2 - max_radius);
+                results.mu_x(batch) = cx / self.r_stimulus * max_radius * 2 - max_radius;
+                results.mu_y(batch) = -(cy / self.r_stimulus * max_radius * 2 - max_radius);
 
-                rf.sigma(batch) = [m_image, sqrt(rf.mu_x(batch).^2 +...
-                    rf.mu_y(batch).^2)] * beta;
-                if ~silent
-                    waitbar(v/n_msk,wb)
-                end
+                results.sigma(batch) = [m_image, sqrt(results.mu_x(batch).^2 +...
+                    results.mu_y(batch).^2)] * beta;
+               
+                progress(v / n_msk * 20)
+                
             end
             if isempty(v)
                 batch = idx;
@@ -204,20 +275,28 @@ classdef HGR < handle
             m_image = mean(im)';
             cx = floor((pos-1) / self.r_stimulus);
             cy = mod(pos-1, self.r_stimulus);
-            rf.mu_x(batch) = cx / self.r_stimulus * max_radius * 2 - max_radius;
-            rf.mu_y(batch) = -(cy / self.r_stimulus * max_radius * 2 - max_radius);
-            rf.sigma(batch) = [m_image, sqrt(rf.mu_x(batch).^2 +...
-                rf.mu_y(batch).^2)] * beta;
-            if ~silent
-                close(wb)
-            end
+            results.mu_x(batch) = cx / self.r_stimulus * max_radius * 2 - max_radius;
+            results.mu_y(batch) = -(cy / self.r_stimulus * max_radius * 2 - max_radius);
+            results.sigma(batch) = [m_image, sqrt(results.mu_x(batch).^2 +...
+                results.mu_y(batch).^2)] * beta;
+            results.polar_angle = angle(results.mu_x + results.mu_y * 1i);
+            results.eccentricity = abs(results.mu_x + results.mu_y * 1i);
+
         end
 
         function tc = get_timecourses(self)
+            % returns the timecourses predicted based on the encoded
+            % stimulus and feature weights.
             tc = self.phi * self.theta;
         end
 
         function set_parameters(self,parameters)
+            % change parameters of the class
+            %
+            % required input
+            %  - parameters: a structure containing all parameters required
+            %                required by the class
+            
             self.r_stimulus = parameters.r_stimulus;
             self.n_pixels = self.r_stimulus^2;
             self.n_features = parameters.n_features;
@@ -230,6 +309,10 @@ classdef HGR < handle
         end
 
         function reset(self)
+            % reset all internal states of the class
+            %             
+            % use this function prior to conducting real time estimation
+            % for a new set of data
             self.theta = zeros(self.n_features,self.n_voxels);
             self.step = 1;
             self.mean = zeros(1,self.n_features);
@@ -239,8 +322,21 @@ classdef HGR < handle
             self.conv_x = zeros(numel(self.kernel),self.n_features);
         end
 
-        function [index,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
-
+        function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
+            % uses blocked cross-validation to obtain the best fitting
+            % voxels and returns a mask as well the correlation fit per
+            % voxel
+            %
+            % required inputs are
+            %  - data    : a matrix of empirically observed BOLD timecourses
+            %              whose rows correspond to time (volumes).
+            %  - stimulus: a time by number of pixels stimulus matrix.
+            %
+            % optional inputs are
+            %  - type    : cutoff type           (default = 'percentile')
+            %  - cutoff  : cutoff value          (default = 95)
+            %  - n_splits: number of data splits (default = 4)
+            
             p = inputParser;
             addRequired(p,'data');
             addRequired(p,'stimulus');
@@ -280,14 +376,14 @@ classdef HGR < handle
 
             if strcmp(type,'percentile')
                 threshold = prctile(corr_fit, cutoff);
-                index = corr_fit>=threshold;
+                mask = corr_fit>=threshold;
             elseif strcmp(type,'threshold')
-                index = corr_fit>=cutoff;
+                mask = corr_fit>=cutoff;
             elseif strcmp(type,'number')
                 corr_fit(isnan(corr_fit)) = -1;
                 [val] = sort(corr_fit, 'descend');
                 threshold = val(cutoff);
-                index = corr_fit>=threshold;
+                mask = corr_fit>=threshold;
             else
                error('Wrong type. Choose either ''percentile'', ''number'' or ''threshold''')
             end
