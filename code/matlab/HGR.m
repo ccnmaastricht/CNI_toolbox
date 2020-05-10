@@ -156,7 +156,7 @@ classdef HGR < handle
         function ridge(self,data,stimulus)
             % peresultsorms ridge regression with stimulus encoded by hashed
             % Gaussians as predictors.
-            %
+            %p
             % required inputs are
             %  - data    : a matrix of empirically observed BOLD timecourses
             %              whose rows correspond to time (volumes).
@@ -199,7 +199,7 @@ classdef HGR < handle
             %  - alpha     : shrinkage parameter              (default =     1)
             %  - mask      : binary mask for selecting voxels
             
-            progress('estimating presults parameters')
+            progress('estimating pRF parameters')
             
             p = inputParser;
             addOptional(p,'mask',true(self.n_voxels,1));
@@ -244,6 +244,7 @@ classdef HGR < handle
             beta = (P' * P) \ P' * S;
 
             for v=0:s_batch:n_msk-s_batch
+                progress(v / n_msk * 20)
                 batch = idx(v+1:v+s_batch);
                 im = self.gamma * self.theta(:,batch);
                 [mx,pos] = max(im);
@@ -259,11 +260,11 @@ classdef HGR < handle
                 results.sigma(batch) = [m_image, sqrt(results.mu_x(batch).^2 +...
                     results.mu_y(batch).^2)] * beta;
                
-                progress(v / n_msk * 20)
                 
             end
             if isempty(v)
                 batch = idx;
+                progress(20)
             else
                 batch = idx(v+1:end);
             end
