@@ -143,7 +143,7 @@ classdef PEA < handle
             %
             % required inputs are
             %  - data  : a matrix of empirically observed BOLD timecourses
-            %            whose columns correspond to time (volumes).
+            %            whose rows correspond to time (volumes).
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
