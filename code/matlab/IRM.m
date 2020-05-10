@@ -156,7 +156,7 @@ classdef IRM < handle
             self.l_hrf = size(hrf,1);
             if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
-            else
+%             else
                 self.hrf = hrf;
             end
         end

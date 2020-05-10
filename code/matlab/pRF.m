@@ -369,7 +369,7 @@ classdef pRF < handle
                     results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                         self.slope(self.idx(j,3));
                     
-                    progress(v / n_voxels * 20)
+                    progress((v-1) / n_voxels * 20)
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
@@ -392,7 +392,7 @@ classdef pRF < handle
                     results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                         self.slope(self.idx(j,3));
                     
-                    progress(v / n_voxels * 20)
+                    progress((v-1) / n_voxels * 20)
                 end
             end
             results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
