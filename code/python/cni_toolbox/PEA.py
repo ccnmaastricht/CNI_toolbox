@@ -64,6 +64,8 @@ class PEA:
 
     def set_delay(self, delay):
         '''
+        Set delay caused by hemodynamic response
+
         Parameters
         ----------
         delay: float
@@ -73,11 +75,13 @@ class PEA:
 
     def set_direction(self, direction):
         '''
-        provide a direction of motion for the class.
-        This can be either numeric (-1,1) or in form of a string ('cw','ccw')
-        for clockwise and counterclockwise rotation, respectively.
-        Contracting rings are also considered to move clockwise (-1)
-        while expanding rings are considered to move counterclockwise (1).
+        provide a direction of motion
+
+        Parameters
+        ----------
+        direction: string or integer
+            clockwise rotation / contraction = (-1, or 'cw')
+            counterclockwise rotation / expansion = (1 or 'ccw')
         '''
 
         if direction=='cw':
@@ -90,6 +94,8 @@ class PEA:
 
     def fitting(self, data, mask = [], threshold = 100):
         '''
+        Perform analysis, fitting sine and cosine at stimulation frequency to data
+
         Parameters
         ----------
         data: floating point array
