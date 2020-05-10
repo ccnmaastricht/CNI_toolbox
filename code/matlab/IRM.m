@@ -26,6 +26,7 @@ classdef IRM < handle
     % Input-referred model (IRM) mapping tool.
     %
     % irm = IRM(parameters) creates an instance of the IRM class.
+    %
     % parameters is a structure with 5 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
@@ -62,8 +63,6 @@ classdef IRM < handle
     
     properties (Access = private)
         
-        is
-        
         % functions
         two_gamma               % two gamma hrf function
         
@@ -93,9 +92,7 @@ classdef IRM < handle
             addRequired(p,'parameters',@isstruct);
             addOptional(p,'hrf',[]);
             p.parse(parameters,varargin{:});
-            
-            self.is = 'input-referred modeling tool';
-            
+
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             
@@ -128,7 +125,7 @@ classdef IRM < handle
             % If a single hrf is used for every voxel, this function
             % returns a column vector.
             % If a unique hrf is used for each voxel, this function returns
-            % a matrix with columns corresponding to time and the remaining
+            % a matrix with rows corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
@@ -154,10 +151,10 @@ classdef IRM < handle
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a matrix whose columns correspond to time.
+            % or a matrix whose rows correspond to time.
             % The remaining dimensionsneed to match those of the data.
             self.l_hrf = size(hrf,1);
-            if ndims(hrf)==4
+            if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
             else
                 self.hrf = hrf;
@@ -179,9 +176,8 @@ classdef IRM < handle
             %          parameters).
             %          Each cell element needs to contain a column vector
             %          of variable length with parameter values to be explored.
-            text = 'creating timecourses...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            
+            progress('performing phase encoding analysis')
             
             self.xdata = xdata;
             self.n_predictors = numel(xdata);
@@ -205,11 +201,11 @@ classdef IRM < handle
                     x(p) = self.xdata{p}(self.idx(j,p));
                 end
                 tc(:,j) = FUN(self.stimulus,x);
-                waitbar(j/self.n_points,wb);
+                
+                progress(j / self.n_points * 20);
             end
             self.tc_fft = fft(tc);
-            close(wb)
-            fprintf('done\n');
+            
         end
         
         function results = mapping(self,data,varargin)
@@ -230,9 +226,7 @@ classdef IRM < handle
             %  - threshold: minimum voxel intensity (default = 100.0)
             %  - mask     : binary mask for selecting voxels
             
-            text = 'mapping input-referred model...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('mapping input-referred model')
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -280,7 +274,7 @@ classdef IRM < handle
                         results.P(v,p) = self.xdata{p}(self.idx(j,p));
                     end
                     
-                    waitbar(m/n_voxels,wb)
+                    progress(m / n_voxels * 20)
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
@@ -300,15 +294,14 @@ classdef IRM < handle
                         results.P(v,p) = self.xdata(self.idx(j,p),p);
                     end
                     
-                    waitbar(m/n_voxels,wb)
+                    progress(m / n_voxels * 20)
                 end
             end
             results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
             results.P = squeeze(...
                 reshape(...
                 results.P,self.n_rows,self.n_cols,self.n_slices,self.n_predictors));
-            close(wb)
-            fprintf('done\n');
+
         end
     end
 end

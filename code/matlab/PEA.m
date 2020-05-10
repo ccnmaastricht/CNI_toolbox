@@ -26,6 +26,7 @@ classdef PEA < handle
     % Phase-encoding analysis tool.
     %
     % pea = PEA(parameters) creates an instance of the PEA class.
+    %
     % parameters is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - f_stim    : stimulation frequency
@@ -54,8 +55,6 @@ classdef PEA < handle
     
     properties (Access = private)
         
-        is
-        
         % parameters
         f_sampling
         f_stim
@@ -76,7 +75,6 @@ classdef PEA < handle
         
         function self = PEA(parameters)
             % constructor
-            self.is = 'PEA tool';
             
             self.f_sampling = parameters.f_sampling;
             self.f_stim = parameters.f_stim;
@@ -151,9 +149,7 @@ classdef PEA < handle
             %  - threshold: minimum voxel intensity (default = 100.0)
             %  - mask     : binary mask for selecting voxels
             
-            text = 'performing phase encoding analysis...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('performing phase encoding analysis')
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -216,7 +212,7 @@ classdef PEA < handle
                 results.F_stat(v) = MSM/MSE;
                 results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
                 
-                waitbar(m/n_voxels,wb)
+                progress(m / n_voxels * 20)
             end
             
             results.Phase = reshape(results.Phase,...
@@ -228,8 +224,6 @@ classdef PEA < handle
             results.P_value = reshape(results.P_value,...
                 self.n_rows,self.n_cols,self.n_slices);
             
-            close(wb)
-            fprintf('done\n');
         end
         
     end

@@ -26,13 +26,14 @@ classdef pRF < handle
     % Population receptive field (pRF) mapping tool.
     %
     % prf = pRF(parameters) creates an instance of the pRF class.
+    %
     % parameters is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
     %   - n_rows    : number of rows (in-plane resolution)
     %   - n_cols    : number of columns (in-plance resolution)
     %   - n_slices  : number of slices
-    %   - r_stimulus: width/height of stimulus images in pixels
+    %   - r_stimulus: width & height of stimulus images in pixels
     %
     % optional inputs are
     %   - hrf       : either a column vector containing a single hemodynamic
@@ -63,8 +64,6 @@ classdef pRF < handle
     % 4. results = prf.mapping(data);
     
     properties (Access = private)
-        
-        is
         
         % functions
         two_gamma               % two gamma hrf function
@@ -98,8 +97,6 @@ classdef pRF < handle
             addRequired(p,'parameters',@isstruct);
             addOptional(p,'hrf',[]);
             p.parse(parameters,varargin{:});
-            
-            self.is = 'pRF mapping tool';
             
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
@@ -136,7 +133,7 @@ classdef pRF < handle
             % If a single hrf is used for every voxel, this function
             % returns a column vector.
             % If a unique hrf is used for each voxel, this function returns
-            % a matrix with columns corresponding to time and the remaining
+            % a matrix with rows corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
@@ -164,10 +161,10 @@ classdef pRF < handle
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a matrix whose columns correspond to time.
+            % or a matrix whose rows correspond to time.
             % The remaining dimensionsneed to match those of the data.
             self.l_hrf = size(hrf,1);
-            if ndims(hrf)==4
+            if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
             else
                 self.hrf = hrf;
@@ -190,7 +187,7 @@ classdef pRF < handle
         end
         
         function import_stimulus(self)
-            % imports the series of .png files constituting the stimulation
+            % imports a series of .png files constituting the stimulation
             % protocol of the pRF experiment.
             % This series is stored internally in matrix format
             % (height-by-width-by-time).
@@ -199,9 +196,6 @@ classdef pRF < handle
             [~,path] = uigetfile('*.png',...
                 'Please select the first .png file');
             files = dir([path,'*.png']);
-            text = 'loading stimulus...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
             
             im = imread([path,files(1).name]);
             self.stimulus = zeros(self.r_stimulus,self.r_stimulus,...
@@ -217,7 +211,6 @@ classdef pRF < handle
             for t=2:self.n_samples
                 im = imread([path,files(index(t)).name]);
                 self.stimulus(:,:,t) = im(:,:,1);
-                waitbar(t/self.n_samples,wb)
             end
             mn = min(self.stimulus(:));
             range = max(self.stimulus(:))-mn;
@@ -225,8 +218,6 @@ classdef pRF < handle
             self.stimulus = (reshape(self.stimulus,...
                 self.r_stimulus^2,...
                 self.n_samples)-mn)/range;
-            close(wb)
-            fprintf('done\n');
         end
         
         function create_timecourses(self,varargin)
@@ -236,15 +227,15 @@ classdef pRF < handle
             % location (x,y) and size parameters.
             %
             % optional inputs are
-            %  - max_radius  : radius of the field of fiew     (default =  10.0)
             %  - num_xy      : steps in x and y direction      (default =  30.0)
+            %  - max_radius  : radius of the field of fiew     (default =  10.0)
+            %  - num_slope   : steps from lower to upper bound (default =  10.0)
             %  - min_slope   : lower bound of RF size slope    (default =   0.1)
             %  - max_slope   : upper bound of RF size slope    (default =   1.2)
-            %  - num_slope   : steps from lower to upper bound (default =  10.0)
+            %  - css_exponent: compressive spatial summation   (default =   1.0)
+            %  - sampling    : eccentricity sampling type      (default = 'log')
             
-            text = 'creating timecourses...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('creating timecourses');
             
             p = inputParser;
             addOptional(p,'num_xy',30);
@@ -289,19 +280,19 @@ classdef pRF < handle
             
             W = single(zeros(self.n_points,...
                 self.r_stimulus^2));
+
+            
             for j=1:self.n_points
                 x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
                 y = sin(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
                 sigma = self.ecc(self.idx(j,2)) * self.slope(self.idx(j,3));
                 W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
-                waitbar(j/self.n_points*.9,wb);
+                progress(j / self.n_points * 19)
             end
             
             tc = (W * self.stimulus).^css_exponent;
-            waitbar(1,wb);
+            progress(20)
             self.tc_fft = fft(tc');
-            close(wb)
-            fprintf('done\n');
         end
         
         function results = mapping(self,data,varargin)
@@ -312,25 +303,23 @@ classdef pRF < handle
             %  - mu_y
             %  - sigma
             %  - eccentricity
-            %  - polar_Angle
+            %  - polar_angle
             %
             % the dimension of each field corresponds to the dimensions
             % of the data.
             %
             % required inputs are
             %  - data  : a matrix of empirically observed BOLD timecourses
-            %            whose columns correspond to time (volumes).
+            %            whose rows correspond to time (volumes).
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
             %  - mask     : binary mask for selecting voxels
             
-            text = 'mapping population receptive fields...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('mapping population receptive fields')
             
             p = inputParser;
-            addRequired(p,'data',@isnumeric);
+            addRequired(p,'data',@isnumertic);
             addOptional(p,'threshold',100);
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
@@ -380,7 +369,7 @@ classdef pRF < handle
                     results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                         self.slope(self.idx(j,3));
                     
-                    waitbar(v/n_voxels,wb)
+                    progress(v / n_voxels * 20)
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
@@ -403,7 +392,7 @@ classdef pRF < handle
                     results.sigma(v) = self.ecc(self.idx(j,2)) * ...
                         self.slope(self.idx(j,3));
                     
-                    waitbar(v/n_voxels,wb)
+                    progress(v / n_voxels * 20)
                 end
             end
             results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
@@ -412,8 +401,6 @@ classdef pRF < handle
             results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
             results.eccentricity = abs(results.mu_x+results.mu_y*1i);
             results.polar_angle = angle(results.mu_x+results.mu_y*1i);
-            close(wb)
-            fprintf('done\n');
         end
     end
 end
