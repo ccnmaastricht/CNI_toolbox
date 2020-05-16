@@ -319,7 +319,7 @@ classdef pRF < handle
             progress('mapping population receptive fields')
             
             p = inputParser;
-            addRequired(p,'data',@isnumertic);
+            addRequired(p,'data',@isnumeric);
             addOptional(p,'threshold',100);
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
