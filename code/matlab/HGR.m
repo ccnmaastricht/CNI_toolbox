@@ -24,7 +24,7 @@ classdef HGR < handle
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
     %
-    % Population receptive field (presults) mapping tool.
+    % Hashed Gaussian Regression (HGR) tool.
     %
     % hgr = HGR(parameters) creates an instance of the HGR class.
     %
@@ -138,7 +138,7 @@ classdef HGR < handle
         end
 
         function update(self,data,stimulus)
-            % peresultsorms a single gradient descent update based on current
+            % performs a single gradient descent update based on current
             % time point's data and stimulus. Online convolution and
             % z-normalization is handled internally.  
             %
