@@ -367,8 +367,8 @@ classdef HGR < handle
                 self.ridge(train_data,train_stim);
                 gam = self.get_features;
                 thet = self.get_weights;
-                ph = test_stim * gam;
-                Y = zscore(ph * thet);
+                phi = self.convolution(test_stim * gam);
+                Y = zscore(phi * thet);
                 mag_Y = sqrt(sum(Y.^2));
                 mag_data = sqrt(sum(test_data.^2));
                 corr_fit(:,i) = (sum(Y .* test_data) ./ (mag_Y .* mag_data))';
@@ -430,21 +430,12 @@ classdef HGR < handle
             n_samples = numel(self.kernel) - 1;
             x_fft = fft([x; zeros(n_samples,self.n_features)]);
             self.conv_x = [self.conv_x;zeros(1,self.n_features)];
-            self.conv_x(self.step:self.step+rows,:) = ...
-                self.conv_x(self.step:self.step+rows,:) + ...
+            self.conv_x(self.step:self.step+n_samples,:) = ...
+                self.conv_x(self.step:self.step+n_samples,:) + ...
                 ifft(x_fft .* self.kernel_fft);
             x_conv = self.conv_x(self.step,:);
         end
 
-        function x_conv = convolve(self, x)
-            rows = numel(self.kernel) - 1;
-            x_fft = fft([x;zeros(rows,self.n_channels)]);
-            self.conv_x = [self.conv_x;zeros(1,self.n_channels)];
-            self.conv_x(self.step:self.step+rows,:) = ...
-                self.conv_x(self.step:self.step+rows,:) + ...
-                ifft(x_fft .* self.kernel_fft);
-            x_conv = self.conv_x(self.step,:);
-        end
 
         function x_next = zscore_step(self,x)
             self.update_mean(x);
