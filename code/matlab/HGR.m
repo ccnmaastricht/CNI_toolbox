@@ -86,6 +86,7 @@ classdef HGR < handle
 
         l_kernel         % length of kernel
         kernel           % convolution kernel
+        kernel_fft       % fourier transform of convolution kernel
         conv_x           % running convolution
 
         step             % internal step counter
@@ -130,6 +131,8 @@ classdef HGR < handle
             self.theta = zeros(self.n_features,self.n_voxels);
             self.kernel = self.two_gamma(0:self.p_sampling:...
                 self.l_kernel - 1)';
+            self.kernel_fft = fft(self.kernel);
+            self.conv_x = zeros(numel(self.kernel) - 1, self.n_features);
             self.step = 1;
             self.mean = zeros(1,self.n_features);
             self.previous_mean = zeros(1,self.n_features);
@@ -151,6 +154,7 @@ classdef HGR < handle
             self.phi = self.zscore_step(phi_conv);
             self.theta = self.theta + self.eta *...
                 (self.phi' * data - self.phi' * self.phi * self.theta);
+            self.step = self.step + 1;
         end
 
         function ridge(self,data,stimulus)
@@ -262,12 +266,13 @@ classdef HGR < handle
                
                 
             end
+           
             if isempty(v)
-                batch = idx;
-                progress(20)
+                batch = idx; 
             else
                 batch = idx(v+1:end);
             end
+            progress(20)
             im = self.gamma * self.theta(:,batch);
             [mx,pos] = max(im);
             mn = min(im);
@@ -320,7 +325,7 @@ classdef HGR < handle
             self.previous_mean = zeros(1,self.n_features);
             self.M2 = ones(1,self.n_features);
             self.sigma = zeros(1,self.n_features);
-            self.conv_x = zeros(numel(self.kernel),self.n_features);
+            self.conv_x = zeros(numel(self.kernel) - 1,self.n_features);
         end
 
         function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
@@ -365,10 +370,10 @@ classdef HGR < handle
                 test_stim = stimulus(bound+1:end,:);
 
                 self.ridge(train_data,train_stim);
-                gam = self.get_features;
-                thet = self.get_weights;
-                phi = self.convolution(test_stim * gam);
-                Y = zscore(phi * thet);
+                gamma_train = self.get_features;
+                theta_train = self.get_weights;
+                phi_test = self.convolution(test_stim * gamma_train);
+                Y = zscore(phi_test * theta_train);
                 mag_Y = sqrt(sum(Y.^2));
                 mag_data = sqrt(sum(test_data.^2));
                 corr_fit(:,i) = (sum(Y .* test_data) ./ (mag_Y .* mag_data))';
@@ -428,7 +433,7 @@ classdef HGR < handle
 
         function x_conv = convolution_step(self, x)
             n_samples = numel(self.kernel) - 1;
-            x_fft = fft([x; zeros(n_samples,self.n_features)]);
+            x_fft = fft([x; zeros(n_samples, self.n_features)]);
             self.conv_x = [self.conv_x;zeros(1,self.n_features)];
             self.conv_x(self.step:self.step+n_samples,:) = ...
                 self.conv_x(self.step:self.step+n_samples,:) + ...
@@ -441,7 +446,6 @@ classdef HGR < handle
             self.update_mean(x);
             self.update_sigma(x);
             x_next = (x - self.mean) ./ self.sigma;
-            self.step = self.step + 1;
         end
 
         function update_mean(self,x)
@@ -452,7 +456,7 @@ classdef HGR < handle
         function update_sigma(self,x)
             self.M2 = self.M2 + (x - self.previous_mean) .* (x - self.mean);
             if self.step ==1
-                self.sigma = sqrt(self.M2 ./ self.step);
+                self.sigma = sqrt(self.M2);
             else
                 self.sigma = sqrt(self.M2 ./ (self.step - 1));
             end
