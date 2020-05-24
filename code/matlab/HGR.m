@@ -62,11 +62,13 @@ classdef HGR < handle
     
     properties (Access = private)
 
-        is
-
         % functions
         gauss            % 2D Gaussian function
         two_gamma        % two gamma hresults function
+        
+        % class objects
+        data_processor 
+        phi_processor
 
         % parameters
         p_sampling       % sampling rate
@@ -82,19 +84,9 @@ classdef HGR < handle
         % variables
         theta            % feature weights
         gamma            % features (hashed Gaussians)
-        phi              % activity (overlap between gamma and stimulus)
 
-        l_kernel         % length of kernel
-        kernel           % convolution kernel
-        kernel_fft       % fourier transform of convolution kernel
-        conv_x           % running convolution
-
-        step             % internal step counter
-        mean             % running mean
-        previous_mean    % mean at one prior step
-        M2               % helper variable for calculating sigma
-        sigma            % running standard deviation
-
+        l_hrf            % length of hrf
+        hrf              % hrf convolution kernel
 
     end
     methods (Access = public)
@@ -103,21 +95,19 @@ classdef HGR < handle
         function self = HGR(parameters, varargin)
 
             % constructor
-
-            self.is = 'hashed-Gaussian regression tool';
-
             p = inputParser;
             addRequired(p,'parameters',@isstruct);
             addOptional(p,'l_kernel',34);
             p.parse(parameters,varargin{:});
 
             parameters = p.Results.parameters;
-            self.l_kernel = p.Results.l_kernel;
+            self.l_hrf = p.Results.l_kernel;
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             self.gauss = @(mu_x,mu_y,sigma,X,Y) exp(-((X - mu_x).^2 +...
                 (Y - mu_y).^2) ./ (2 * sigma.^2));
-
+            
+            
             self.p_sampling = 1 / parameters.f_sampling;
             self.r_stimulus = parameters.r_stimulus;
             self.n_pixels = self.r_stimulus^2;
@@ -129,15 +119,19 @@ classdef HGR < handle
             self.lambda = 1 / self.eta;
             self.create_gamma();
             self.theta = zeros(self.n_features,self.n_voxels);
-            self.kernel = self.two_gamma(0:self.p_sampling:...
-                self.l_kernel - 1)';
-            self.kernel_fft = fft(self.kernel);
-            self.conv_x = zeros(numel(self.kernel) - 1, self.n_features);
-            self.step = 1;
-            self.mean = zeros(1,self.n_features);
-            self.previous_mean = zeros(1,self.n_features);
-            self.M2 = ones(1,self.n_features);
-            self.sigma = zeros(1,self.n_features);
+            self.hrf = self.two_gamma(0:self.p_sampling:...
+                self.l_hrf - 1)';
+
+            self.data_processor = online_processor(...
+                self.n_voxels,...
+                'sampling_rate', self.p_sampling,...
+                'l_kernel', p.Results.l_kernel);
+            
+            self.phi_processor = online_processor(...
+                self.n_features,...
+                'sampling_rate', self.p_sampling,...
+                'l_kernel', p.Results.l_kernel);
+            
         end
 
         function update(self,data,stimulus)
@@ -150,11 +144,11 @@ classdef HGR < handle
             %              per voxel.
             %  - stimulus: a row vector of pixel intensities.
             phi = stimulus * self.gamma;
-            phi_conv = self.convolution_step(phi);
-            self.phi = self.zscore_step(phi_conv);
+            phi = self.phi_processor.convolve(phi);
+            phi = self.phi_processor.update(phi);
+            y = self.data_processor.update(data);
             self.theta = self.theta + self.eta *...
-                (self.phi' * data - self.phi' * self.phi * self.theta);
-            self.step = self.step + 1;
+                (phi' * y - phi' * phi * self.theta);
         end
 
         function ridge(self,data,stimulus)
@@ -166,8 +160,8 @@ classdef HGR < handle
             %              whose rows correspond to time (volumes).
             %  - stimulus: a time by number of pixels stimulus matrix.
             I = eye(self.n_features) * self.lambda;
-            self.phi = zscore(self.convolution(stimulus * self.gamma));
-            self.theta = (self.phi' * self.phi + I) \ self.phi' * data;
+            phi = zscore(self.convolution(stimulus * self.gamma));
+            self.theta = (phi' * phi + I) \ phi' * zscore(data);
         end
 
         function gamma = get_features(self)
@@ -290,10 +284,11 @@ classdef HGR < handle
 
         end
 
-        function tc = get_timecourses(self)
-            % returns the timecourses predicted based on the encoded
-            % stimulus and feature weights.
-            tc = self.phi * self.theta;
+        function tc = get_timecourses(self, stimulus)
+            % returns the timecourses predicted based on an encoding of the
+            % provided stimulus and the feature weights.
+            phi = zscore(self.convolution(stimulus * self.gamma));
+            tc = phi * self.theta;
         end
 
         function set_parameters(self,parameters)
@@ -320,12 +315,8 @@ classdef HGR < handle
             % use this function prior to conducting real time estimation
             % for a new set of data
             self.theta = zeros(self.n_features,self.n_voxels);
-            self.step = 1;
-            self.mean = zeros(1,self.n_features);
-            self.previous_mean = zeros(1,self.n_features);
-            self.M2 = ones(1,self.n_features);
-            self.sigma = zeros(1,self.n_features);
-            self.conv_x = zeros(numel(self.kernel) - 1,self.n_features);
+            self.phi_processor.reset();
+            self.data_processor.reset();
         end
 
         function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
@@ -370,10 +361,7 @@ classdef HGR < handle
                 test_stim = stimulus(bound+1:end,:);
 
                 self.ridge(train_data,train_stim);
-                gamma_train = self.get_features;
-                theta_train = self.get_weights;
-                phi_test = self.convolution(test_stim * gamma_train);
-                Y = zscore(phi_test * theta_train);
+                Y = self.get_timecourses(test_stim);
                 mag_Y = sqrt(sum(Y.^2));
                 mag_data = sqrt(sum(test_data.^2));
                 corr_fit(:,i) = (sum(Y .* test_data) ./ (mag_Y .* mag_data))';
@@ -425,41 +413,10 @@ classdef HGR < handle
 
         function x_conv = convolution(self, x)
             n_samples = size(x, 1);
-            kernel = [self.kernel; zeros(n_samples, 1)];
-            x = [x; zeros(ceil(self.l_kernel / self.p_sampling), self.n_features)];
+            kernel = [self.hrf; zeros(n_samples, 1)];
+            x = [x; zeros(ceil(self.l_hrf / self.p_sampling), self.n_features)];
             x_conv = ifft(fft(x) .* fft(kernel));
             x_conv = x_conv(1:n_samples, :);
-        end
-
-        function x_conv = convolution_step(self, x)
-            n_samples = numel(self.kernel) - 1;
-            x_fft = fft([x; zeros(n_samples, self.n_features)]);
-            self.conv_x = [self.conv_x;zeros(1,self.n_features)];
-            self.conv_x(self.step:self.step+n_samples,:) = ...
-                self.conv_x(self.step:self.step+n_samples,:) + ...
-                ifft(x_fft .* self.kernel_fft);
-            x_conv = self.conv_x(self.step,:);
-        end
-
-
-        function x_next = zscore_step(self,x)
-            self.update_mean(x);
-            self.update_sigma(x);
-            x_next = (x - self.mean) ./ self.sigma;
-        end
-
-        function update_mean(self,x)
-            self.previous_mean = self.mean;
-            self.mean = self.mean + (x - self.mean) ./ self.step;
-        end
-
-        function update_sigma(self,x)
-            self.M2 = self.M2 + (x - self.previous_mean) .* (x - self.mean);
-            if self.step ==1
-                self.sigma = sqrt(self.M2);
-            else
-                self.sigma = sqrt(self.M2 ./ (self.step - 1));
-            end
         end
 
     end
