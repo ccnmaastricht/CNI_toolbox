@@ -63,7 +63,6 @@ classdef online_processor < handle
     end
     methods (Access = public)
         
-        % constructor
         function self = online_processor(n_channels,varargin)
             
             % constructor

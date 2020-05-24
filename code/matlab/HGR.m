@@ -91,7 +91,6 @@ classdef HGR < handle
     end
     methods (Access = public)
 
-        % constructor
         function self = HGR(parameters, varargin)
 
             % constructor
