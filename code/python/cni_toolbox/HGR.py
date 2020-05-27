@@ -347,7 +347,7 @@ class HGR:
         n_steps = n_splits - 1
         n_samples = np.floor(n_time / n_splits)
 
-        corr_fit = np.zeros(self.n_voxels, n_splits)
+        corr_fit = np.zeros((self.n_voxels, n_splits))
 
         for i in range(n_steps):
             bound = (i + 1) * n_samples
