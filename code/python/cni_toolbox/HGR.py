@@ -221,11 +221,11 @@ class HGR:
 
             cx = np.floor(pos / self.r_stimulus)
             cy = pos % self.r_stimulus
-            results.mu_x[batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
-            results.mu_y[batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
-            R = np.sqrt(results.mu_x[batch]**2 + results.mu_y[batch]**2)
+            results['mu_x'][batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
+            results['mu_y'][batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
+            R = np.sqrt(results['mu_x'][batch]**2 + results['mu_y'][batch]**2)
             P = np.hstack((m_image, R))
-            results.sigma[batch] = np.matmul(P, beta)
+            results['sigma'][batch] = np.matmul(P, beta)
 
             i = int(v / n_mask * 21)
             sys.stdout.write('\r')
@@ -248,11 +248,11 @@ class HGR:
 
             cx = np.floor(pos / self.r_stimulus)
             cy = pos % self.r_stimulus
-            results.mu_x[batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
-            results.mu_y[batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
-            R = np.sqrt(results.mu_x[batch]**2 + results.mu_y[batch]**2)
+            results['mu_x'][batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
+            results['mu_y'][batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
+            R = np.sqrt(results['mu_x'][batch]**2 + results['mu_y'][batch]**2)
             P = np.hstack((m_image, R))
-            results.sigma[batch] = np.matmul(P, beta)
+            results['sigma'][batch] = np.matmul(P, beta)
 
             i = int(v / n_mask* 21)
             sys.stdout.write('\r')
