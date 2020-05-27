@@ -314,7 +314,10 @@ class HGR:
         self.data_processor.reset()
         self.phi_processor.reset()
 
-    def get_best_voxels():
+    def get_best_voxels(self, data, stimulus,
+                        type = 'percentile',
+                        cutoff = 95.,
+                        n_splits = 4):
         '''
         uses blocked cross-validation to obtain the best fitting voxels
 
