@@ -231,7 +231,7 @@ class HGR:
             i = int(v / n_mask * 21)
             sys.stdout.write('\r')
             sys.stdout.write("[%-20s] %d%%"
-                             ('=' * i, 5 * i))
+                            % ('=' * i, 5 * i))
 
         exist = 'v' in locals()
         if exist==False:
@@ -258,7 +258,7 @@ class HGR:
         i = int(v / n_mask * 21)
         sys.stdout.write('\r')
         sys.stdout.write("[%-20s] %d%%"
-                         ('=' * i, 5 * i))
+                        % ('=' * i, 5 * i))
 
         return results
 
