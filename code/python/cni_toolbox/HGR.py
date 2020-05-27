@@ -105,12 +105,12 @@ class HGR:
 
         phi = np.matmul(stimulus, self.gamma)
         phi = self.phi_processor.convolve(phi)
-        phi = self.phi_processor.update(phi)
-        y = self.data_processor.update(data)
-        self.theta += self.eta * \
-            (np.matmul(phi.transpose(), y) -
+        phi = self.phi_processor.update(phi).reshape(1,-1)
+        y = self.data_processor.update(data).reshape(1,-1)
+        self.theta += self.eta * (np.dot(
+            phi.transpose(), y) -
             np.matmul(
-            np.matmul(phi.transpose(), phi),
+            np.outer(phi, phi),
             self.theta))
 
     def ridge(self, data, stimulus):
