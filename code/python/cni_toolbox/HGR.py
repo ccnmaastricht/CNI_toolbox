@@ -410,7 +410,7 @@ class HGR:
 
         n_samples = x.shape[0]
         kernel = np.vstack((self.hrf, np.zeros(n_samples)))
-        x = np.vstack((x, np.zeros((np.ceil(self.l_h / self.p_sampling),
+        x = np.vstack((x, np.zeros((np.ceil(self.l_hrf / self.p_sampling),
                                     self.n_features))))
         x_conv = ifft(fft(x) * fft(kernel))
         return x_conv[:n_samples]
