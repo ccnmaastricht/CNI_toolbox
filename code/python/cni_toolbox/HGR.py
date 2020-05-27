@@ -259,7 +259,7 @@ class HGR:
             sys.stdout.write("[%-20s] %d%%"
                              ('=' * i, 5 * i))
 
-            return results
+        return results
 
     def get_timecourses(self, stimulus):
         '''
