@@ -26,7 +26,7 @@ import tkinter as tk
 from tkinter import filedialog
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_toolbox.gadgets import two_gamma
+from cni_toolbox.gadgets import two_gamma, gaussian
 
 
 class pRF:
@@ -88,35 +88,12 @@ class pRF:
                                              np.zeros(self.n_samples)),
                                    axis=0)
         else:
-            self.l_hrf = int(32 * self.f_sampling)
+            self.l_hrf = int(34 * self.f_sampling)
             timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
-                                                      self.l_hrf) - 1,
+                                                      self.l_hrf),
                                    self.p_sampling)
             self.hrf_fft = fft(two_gamma(timepoints), axis=0)
-
-    @staticmethod
-    def __gaussian__(mu_x, mu_y, sigma, x, y):
-        '''
-        Parameters
-        ----------
-        mu_x: float
-            center of Gaussian along x direction
-        mu_y: float
-            center of Gaussian along y direction
-        sigma: float
-            spread of Gaussian
-        x: floating point array (1D)
-            x-coordinates
-        y: floating point array (1D)
-            y-coordinates
-
-        Returns
-        -------
-        floating point array
-        '''
-
-        return np.exp(-((x - mu_x)**2 + (y - mu_y)**2) / (2 * sigma**2))
 
     def get_hrf(self):
         '''
@@ -284,8 +261,7 @@ class pRF:
             x = np.cos(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             y = np.sin(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             sigma = self.ecc[self.idx[p, 1]] * self.slope[self.idx[p, 2]]
-            W[p, :] = self.__gaussian__(
-                x, y, sigma, x_coordinates, y_coordinates)
+            W[p, :] = gaussian(x, y, sigma, x_coordinates, y_coordinates)
 
             i = int(p / self.n_points * 19)
             sys.stdout.write('\r')
