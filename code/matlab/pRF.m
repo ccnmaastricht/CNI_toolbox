@@ -184,6 +184,8 @@ classdef pRF < handle
             else
                 self.stimulus = stimulus;
             end
+            self.stimulus = [self.stimulus,...
+                zeros(self.r_stimulus^2, self.l_hrf)];
         end
         
         function import_stimulus(self)
@@ -218,6 +220,9 @@ classdef pRF < handle
             self.stimulus = (reshape(self.stimulus,...
                 self.r_stimulus^2,...
                 self.n_samples)-mn)/range;
+            
+            self.stimulus = [self.stimulus,...
+                zeros(self.r_stimulus^2, self.l_hrf)];
         end
         
         function create_timecourses(self,varargin)
@@ -350,9 +355,10 @@ classdef pRF < handle
             
             if size(self.hrf,2)==1
                 hrf_fft = fft(repmat([self.hrf;...
-                    zeros(self.n_samples-self.l_hrf,1)],...
+                    zeros(self.n_samples,1)],...
                     [1,self.n_points]));
-                tc = zscore(ifft(self.tc_fft.*hrf_fft))';
+                tc = ifft(self.tc_fft.*hrf_fft);
+                tc = zscore(tc(1:self.n_samples, :))';
                 mag_tc = sqrt(sum(tc.^2,2));
                 for m=1:n_voxels
                     v = voxel_index(m);
@@ -373,11 +379,12 @@ classdef pRF < handle
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
-                    zeros(self.n_samples-self.l_hrf,n_voxels)]);
+                    zeros(self.n_samples,n_voxels)]);
                 for m=1:n_voxels
                     v = voxel_index(m);
                     
-                    tc = zscore(ifft(self.tc_fft.*hrf_fft_all(:,m)))';
+                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
+                    tc = zscore(tc(1:self.n_samples, :))';
                     mag_tc = sqrt(sum(tc.^2,2));
                     
                     CS = (tc*data(:,m))./...

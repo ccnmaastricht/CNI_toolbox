@@ -194,13 +194,13 @@ classdef IRM < handle
                     n_observations(p)) + 1;
             end
             
-            tc = zeros(self.n_samples,self.n_points);
+            tc = zeros(self.n_samples + self.l_hrf,self.n_points);
             x = zeros(self.n_predictors,1);
             for j=1:self.n_points
                 for p=1:self.n_predictors
                     x(p) = self.xdata{p}(self.idx(j,p));
                 end
-                tc(:,j) = FUN(self.stimulus,x);
+                tc(1:self.n_samples,j) = FUN(self.stimulus,x);
                 
                 progress(j / self.n_points * 20);
             end
@@ -258,9 +258,9 @@ classdef IRM < handle
             
             if size(self.hrf,2)==1
                 hrf_fft = fft([self.hrf;...
-                    zeros(self.n_samples-self.l_hrf,1)]);
-                tc = zscore(ifft(self.tc_fft.*hrf_fft))';
-                
+                    zeros(self.n_samples,1)]);
+                tc = ifft(self.tc_fft.*hrf_fft);
+                tc = zscore(tc(1:self.n_samples, :))';
                 mag_tc = sqrt(sum(tc.^2,2));
                 for m=1:n_voxels
                     v = voxel_index(m);
@@ -278,11 +278,12 @@ classdef IRM < handle
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
-                    zeros(self.n_samples-self.l_hrf,n_voxels)]);
+                    zeros(self.n_samples,n_voxels)]);
                 for m=1:n_voxels
                     v = voxel_index(m);
                     
-                    tc = zscore(ifft(self.tc_fft.*hrf_fft_all(:,m)))';
+                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
+                    tc = zscore(tc(1:self.n_samples, :))';
                     mag_tc = sqrt(sum(tc.^2,2));
                     
                     CS = (tc*data(:,m))./...
