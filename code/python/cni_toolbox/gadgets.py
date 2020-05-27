@@ -224,7 +224,7 @@ class online_processor:
         self.__update_sigma__(x);
         self.step += 1
 
-        return (x - self.mean) ./ self.sigma
+        return (x - self.mean) / self.sigma
 
     def reset(self):
         '''
