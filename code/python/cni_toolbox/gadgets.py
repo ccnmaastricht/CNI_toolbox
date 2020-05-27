@@ -181,10 +181,10 @@ class online_processor:
         self.M2 = np.ones(self.n_channels)
         self.sigma = np.zeros(self.n_channels)
 
-        self.l_subsampled = int(self.l_kernel / self.p_sampling)
+        self.l_subsampled = int(self.l_kernel / self.p_sampling) - 1
         timepoints = np.arange(0., self.l_kernel, self.p_sampling)
         self.hrf_fft = fft(two_gamma(timepoints), axis=0)
-        self.x_conv = np.zeros((self.l_subsampled, self.n_channels))
+        self.x_conv = np.zeros((self.l_subsampled + 1, self.n_channels))
 
     def convolve(self, x):
         '''
@@ -201,7 +201,7 @@ class online_processor:
 
         x_fft = fft(np.vstack((x.reshape(1,-1), np.zeros((self.l_subsampled, self.n_channels)))), axis=0)
         self.x_conv = np.vstack((self.x_conv, np.zeros((1, self.n_channels))))
-        self.x_conv[self.step:self.step + self.l_subsampled - 1, :] += np.abs(ifft(
+        self.x_conv[self.step:self.step + self.l_subsampled, :] += np.abs(ifft(
             x_fft * np.expand_dims(self.hrf_fft , axis=1), axis=0))
 
         return self.x_conv[self.step, :]
