@@ -73,7 +73,7 @@ class IRM:
 
         if hrf != None:
             self.l_hrf = hrf.shape[0]
-            if hrf.ndim>2:
+            if hrf.ndim>1:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
                 self.hrf_fft = fft(np.vstack((hrf,
                                       np.zeros((self.n_samples,
@@ -84,7 +84,7 @@ class IRM:
                                      np.zeros(self.n_samples)),
                                    axis = 0 )
         else:
-            self.l_hrf = int(32 * self.f_sampling)
+            self.l_hrf = int(34 * self.f_sampling)
             timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
                                                       self.l_hrf) - 1,
@@ -140,7 +140,7 @@ class IRM:
             hemodynamic response function
         '''
         self.l_hrf = hrf.shape[0]
-        if hrf.ndim>2:
+        if hrf.ndim>1:
             hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
             self.hrf_fft = fft(np.vstack((hrf,
                                      np.zeros((self.n_samples,
