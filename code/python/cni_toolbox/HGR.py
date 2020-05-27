@@ -108,9 +108,9 @@ class HGR:
         phi = self.phi_processor.update(phi)
         y = self.data_processor.update(data)
         self.theta += self.eta * \
-            (np.matmul(self.phi.transpose(), y) -
+            (np.matmul(phi.transpose(), y) -
             np.matmul(
-            np.matmul(self.phi.transpose(), self.phi),
+            np.matmul(phi.transpose(), phi),
             self.theta))
 
     def ridge(self, data, stimulus):
