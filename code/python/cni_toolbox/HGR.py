@@ -179,7 +179,7 @@ class HGR:
 
         print('\nestimating pRF parameters')
 
-        if mask == None:
+        if np.size(mask) == 0:
             mask = np.ones(self.n_voxels).astype(bool)
         idx = np.arange(self.n_voxels)
         idx = idx(mask)
