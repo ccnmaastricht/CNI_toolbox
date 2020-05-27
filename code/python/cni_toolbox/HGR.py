@@ -394,6 +394,15 @@ class HGR:
         self.gamma = np.zeros((self.n_pixels, self.n_features))
         pix_id = np.linspace(0, self.n_pixels, self.n_features * self.n_gaussians)
 
+        x = np.floor(pix_id / self.r_stimulus)
+        y = pix_id % self.r_stimulus
+
+        for i in range self.n_features:
+            for j in range self.n_gaussians:
+                self.gamma[:,i] += gaussian(x[i * n_gaussians + j],
+                    y[i * n_gaussians + j], sigma, x_coordinates, y_coordinates)
+
+            self.gamma[:, i] /= np.sum(self.gamma[:, i])
 
 
     def __convolution__(self, x):
