@@ -211,6 +211,11 @@ class HGR:
         beta = regress(S, P)
 
         for v in np.arange(0, n_mask - n_batch, n_batch):
+            i = int(v / n_mask * 21)
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-20s] %d%%"
+                            % ('=' * i, 5 * i))
+                            
             batch = idx[v: v + n_batch]
             im = np.matmul(self.gamma, self.theta[:, batch])
             pos = np.argmax(im, axis = 0)
@@ -218,7 +223,7 @@ class HGR:
             mn = np.min(im, axis = 0)
             val_range = mx - mn
             im = ((im - mn) / val_range)**alpha
-            m_image = np.mean(im, axis = 0).transpose()
+            m_image = np.mean(im, axis = 0)
 
             cx = np.floor(pos / self.r_stimulus)
             cy = pos % self.r_stimulus
@@ -228,16 +233,16 @@ class HGR:
             P = np.hstack((m_image.reshape(-1,1), R.reshape(-1,1)))
             results['sigma'][batch] = np.matmul(P, beta)
 
-            i = int(v / n_mask * 21)
-            sys.stdout.write('\r')
-            sys.stdout.write("[%-20s] %d%%"
-                            % ('=' * i, 5 * i))
-
         exist = 'v' in locals()
         if exist==False:
             batch = idx
         else:
             batch = idx[v:]
+
+        i = 20
+        sys.stdout.write('\r')
+        sys.stdout.write("[%-20s] %d%%"
+                        % ('=' * i, 5 * i))
 
         im = np.matmul(self.gamma, self.theta[:, batch])
         pos = np.argmax(im, axis = 0)
@@ -254,11 +259,6 @@ class HGR:
         R = np.sqrt(results['mu_x'][batch]**2 + results['mu_y'][batch]**2)
         P = np.hstack((m_image.reshape(-1,1), R.reshape(-1,1)))
         results['sigma'][batch] = np.matmul(P, beta)
-
-        i = int(v / n_mask * 21)
-        sys.stdout.write('\r')
-        sys.stdout.write("[%-20s] %d%%"
-                        % ('=' * i, 5 * i))
 
         return results
 
@@ -392,7 +392,7 @@ class HGR:
         r = np.arange(self.r_stimulus)
         [x_coordinates, y_coordinates] = np.meshgrid(r, r)
         x_coordinates = x_coordinates.flatten()
-        y_coordinates = -y_coordinates.flatten()
+        y_coordinates = y_coordinates.flatten()
         sigma = self.fwhm / (2 * np.sqrt(2 * np.log(2)))
         self.gamma = np.zeros((self.n_pixels, self.n_features))
         pix_id = np.linspace(0, self.n_pixels, self.n_features * self.n_gaussians)
