@@ -77,7 +77,7 @@ class pRF:
 
         if hrf is not None:
             self.l_hrf = hrf.shape[0]
-            if hrf.ndim > 2:
+            if hrf.ndim > 1:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
                 self.hrf_fft = fft(np.vstack((hrf,
                                               np.zeros((self.n_samples,
@@ -148,7 +148,7 @@ class pRF:
             hemodynamic response function
         '''
         self.l_hrf = hrf.shape[0]
-        if hrf.ndim > 2:
+        if hrf.ndim > 1:
             hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
             self.hrf_fft = fft(np.vstack((hrf,
                                           np.zeros((self.n_samples,
@@ -160,16 +160,20 @@ class pRF:
                                axis=0)
 
     def set_stimulus(self, stimulus):
-        self.stimulus = np.zeros((self.n_samples + self.l_hrf,
-                                  self.n_total))
+        '''
+        Parameters
+        ----------
+        stimulus : floating point array
+        '''
         if stimulus.ndim == 3:
-            self.stimulus[0:self.n_samples, :] = np.reshape(
+            self.stimulus = np.reshape(
                 stimulus, (self.r_stimulus**2, self.n_samples))
         else:
-            self.stimulus[0:self.n_samples, :] = stimulus
+            self.stimulus = stimulus
+        self.stimulus = np.hstack((self.stimulus,
+                                   np.zeros((self.r_stimulus**2, self.l_hrf))))
 
     def import_stimulus(self):
-
         root = tk.Tk()
         stimulus_directory = ''.join(filedialog.askdirectory(
             title='Please select the stimulus directory'))
@@ -382,6 +386,9 @@ class pRF:
                     self.slope[self.idx[idx_best, 2]]
 
                 i = int(m / n_voxels * 21)
+                sys.stdout.write('\r')
+                sys.stdout.write("[%-20s] %d%%"
+                                 % ('=' * i, 5 * i))
 
         for key in results:
             results[key] = np.squeeze(
