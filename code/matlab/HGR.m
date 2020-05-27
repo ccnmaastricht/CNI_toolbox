@@ -124,12 +124,12 @@ classdef HGR < handle
             self.data_processor = online_processor(...
                 self.n_voxels,...
                 'sampling_rate', self.p_sampling,...
-                'l_kernel', p.Results.l_kernel);
+                'l_kernel', self.l_hrf);
             
             self.phi_processor = online_processor(...
                 self.n_features,...
                 'sampling_rate', self.p_sampling,...
-                'l_kernel', p.Results.l_kernel);
+                'l_kernel', self.l_hrf);
             
         end
 
@@ -151,9 +151,9 @@ classdef HGR < handle
         end
 
         function ridge(self,data,stimulus)
-            % peresultsorms ridge regression with stimulus encoded by hashed
+            % performs ridge regression with stimulus encoded by hashed
             % Gaussians as predictors.
-            %p
+            %
             % required inputs are
             %  - data    : a matrix of empirically observed BOLD timecourses
             %              whose rows correspond to time (volumes).
@@ -191,7 +191,7 @@ classdef HGR < handle
             % each field is a column vector with number of voxels elements
             %
             % optional inputs are
-            %  - s_batch   : batch size                       (default = 10000)
+            %  - n_batch   : batch size                       (default = 10000)
             %  - max_radius: radius of measured visual field  (default =    10)
             %  - alpha     : shrinkage parameter              (default =     1)
             %  - mask      : binary mask for selecting voxels
@@ -200,12 +200,12 @@ classdef HGR < handle
             
             p = inputParser;
             addOptional(p,'mask',true(self.n_voxels,1));
-            addOptional(p,'s_batch',10000);
+            addOptional(p,'n_batch',10000);
             addOptional(p,'max_radius',10);
             addOptional(p,'alpha',1);
             p.parse(varargin{:});
             msk = p.Results.mask;
-            s_batch = p.Results.s_batch;
+            n_batch = p.Results.n_batch;
             max_radius = p.Results.max_radius;
             alpha = p.Results.alpha;
 
@@ -240,9 +240,9 @@ classdef HGR < handle
             P = [I, R];
             beta = (P' * P) \ P' * S;
 
-            for v=0:s_batch:n_msk-s_batch
+            for v=0:n_batch:n_msk-n_batch
                 progress(v / n_msk * 20)
-                batch = idx(v+1:v+s_batch);
+                batch = idx(v+1:v+n_batch);
                 im = self.gamma * self.theta(:,batch);
                 [mx,pos] = max(im);
                 mn = min(im);
@@ -354,7 +354,7 @@ classdef HGR < handle
             corr_fit = zeros(self.n_voxels, n_splits);
             for i = 1:n_steps
                 bound = i * n_samples;
-                train_data = data(1:bound,:);
+                train_data = zscore(data(1:bound,:));
                 train_stim = stimulus(1:bound,:);
                 test_data = zscore(data(bound+1:end,:));
                 test_stim = stimulus(bound+1:end,:);
