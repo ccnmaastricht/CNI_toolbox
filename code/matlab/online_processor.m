@@ -26,22 +26,22 @@ classdef online_processor < handle
     % Class for real time processing of fMRI data and stimulus respone.
     %
     % obj = online_processor(n_channels) creates an instance of the class.
-    % n_channels determines the number independent channels (voxels,
+    % n_channels determines the number of independent channels (voxels,
     % pixels etc.) to which processing is applied
     %
     % optional inputs are
-    %   - sampling_rate: sampling rate of fMRI acquisition (TR) in seconds.
-    %     Standard value is 2.
-    %   - l_kernel: length of hemodynic convolution kernel in seconds.
-    %     Standard value is 34.
+    %   - sampling_rate: sampling rate of fMRI acquisition (TR) in seconds (default =  2) 
+    %   - l_kernel: length of hemodynic convolution kernel in seconds      (default = 34)
     %
     % this class has the following functions
     %
-    %   - x_conv = online_processor.convolve(self,x): perform one step of
-    %              real-time convolution.
-    %   - x_next = online_processor.update(self,x): perform one step of
-    %              real-time z-transformation
-    %   - online_processor.reset: reset all variables tracking the signal
+    %   - x_conv = online_processor.convolve(self, x)
+    %   - x_next = online_processor.update(self, x)
+    %   - online_processor.reset()
+    %
+    % use help pRF.function to get more detailed help on any specific function
+    % (e.g. help obj.convolve)
+    %
     properties (Access = private)
         % functions
         two_gamma        % two gamma hrf function
@@ -92,6 +92,7 @@ classdef online_processor < handle
         end
         
         function x_conv = convolve(self,x)
+            % performs one step of real-time convolution
             rows = numel(self.kernel) - 1;
             x_fft = fft([x;zeros(rows,self.n_channels)]);
             self.conv_x = [self.conv_x;zeros(1,self.n_channels)];
@@ -102,6 +103,7 @@ classdef online_processor < handle
         end
         
         function x_next = update(self,x)
+            % performs one step of real-time z-transformation
             self.update_mean(x);
             self.update_sigma(x);
             x_next = (x - self.mean) ./ self.sigma;
@@ -109,6 +111,7 @@ classdef online_processor < handle
         end
         
         function reset(self)
+            % resets all variables tracking the signal
             self.step = 1;
             self.mean = zeros(1,self.n_channels);
             self.previous_mean = zeros(1,self.n_channels);
