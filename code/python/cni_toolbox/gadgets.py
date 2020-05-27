@@ -149,7 +149,7 @@ def correct_autocorr(X, W):
 
     return X_corrected
 
- class online_processor:
+class online_processor:
      '''
     Class for real time processing of fMRI data and stimulus respone.
 
