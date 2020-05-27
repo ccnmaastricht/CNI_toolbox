@@ -84,7 +84,7 @@ class HGR:
         self.data_processor = online_processor(self.n_voxels,
                                 sampling_rate = self.p_sampling,
                                 l_kernel = l_kernel)
-        self.phi_processor = online_processor(self.n_pixels,
+        self.phi_processor = online_processor(self.n_features,
                                 sampling_rate = self.p_sampling,
                                 l_kernel = l_kernel)
 
@@ -215,7 +215,7 @@ class HGR:
             sys.stdout.write('\r')
             sys.stdout.write("[%-20s] %d%%"
                             % ('=' * i, 5 * i))
-                            
+
             batch = idx[v: v + n_batch]
             im = np.matmul(self.gamma, self.theta[:, batch])
             pos = np.argmax(im, axis = 0)
