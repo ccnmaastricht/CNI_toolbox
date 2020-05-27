@@ -183,7 +183,7 @@ class HGR:
             mask = np.ones(self.n_voxels).astype(bool)
         idx = np.arange(self.n_voxels)
         idx = idx[mask]
-        n_msk = sum(mask)
+        n_mask = sum(mask)
 
         results = {'mu_x': np.zeros(self.n_voxels),
                    'mu_y': np.zeros(self.n_voxels),
