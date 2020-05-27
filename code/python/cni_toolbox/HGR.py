@@ -65,7 +65,7 @@ class HGR:
     def __init__(self, parameters, l_kernel = 34):
         self.p_sampling = 1 / parameters['f_sampling']
         self.r_stimulus = parameters['r_stimulus']
-        self.n_pixels = self['r_stimulus']**2
+        self.n_pixels = self.r_stimulus**2
         self.n_features = parameters['n_features']
         self.n_gaussians = parameters['n_gaussians']
         self.n_voxels = parameters['n_voxels']
