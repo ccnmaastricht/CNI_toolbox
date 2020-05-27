@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_toolbox.gadgets import two_gamma, regress
+from cni_toolbox.gadgets import two_gamma, gaussian, regress, online_processor
 
 class HGR:
     '''
@@ -29,7 +29,7 @@ class HGR:
 
     hgr = HGR(parameters) creates an instance of the HGR class.
 
-    parameters is a structure with 7 required fields
+    parameters is a dictionary with 7 required keys
       - f_sampling : sampling frequency (1/TR)
       - r_stimulus : width & height of stimulus images in pixels
       - n_features : number of features (hashed Gaussians)
@@ -69,40 +69,284 @@ class HGR:
         self.n_features = parameters['n_features']
         self.n_gaussians = parameters['n_gaussians']
         self.n_voxels = parameters['n_voxels']
+        self.l_hrf = l_kernel
         self.fwhm = parameters['fwhm'] * self.r_stimulus
         self.eta = parameters['eta'] / self.n_features
         self.lambda = 1 / self.eta;
 
         self.theta = np.zeros((self.n_features, self.n_voxels))
-        self.step = 1;
-        self.mean = np.zeros(self.n_features)
-        self.previous_mean = np.zeros(self.n_features)
-        self.M2 = np.ones(self.n_features)
-        self.sigma = np.zeros(self.n_features)
 
-        timepoints = np.arange(0, self.l_kernel, self.p_sampling)
-        self.kernel = two_gamma(timepoints)
+
+        timepoints = np.arange(0, self.l_hrf, self.p_sampling)
+        self.hrf = two_gamma(timepoints)
+
+        self.data_processor = online_processor(self.n_voxels,
+                                sampling_rate = self.p_sampling,
+                                l_kernel = l_kernel)
+        self.phi_processor = online_processor(self.n_pixels,
+                                sampling_rate = self.p_sampling,
+                                l_kernel = l_kernel)
 
         self.__create_gamma__();
 
-    def update(data, stimulus):
+    def update(self, data, stimulus):
+        '''
+        performs a single gradient descent update based on current
+        time point's data and stimulus. Online convolution and
+        z-normalization is handled internally.
+
+        required inputs are
+         - data: floating point array
+            observed BOLD activation levels per voxel
+         - stimulus: floating point array
+            pixel intensities
         '''
 
-        '''
         phi = np.matmul(stimulus, self.gamma)
-        phi_conv = self.__convolution_step__(phi)
-        self.phi = self.__zscore_step__(phi_conv)
-        self.theta = self.theta + self.eta * \
-            (np.matmul(self.phi.transpose(), data) -
+        phi = self.phi_processor.convolve(phi)
+        phi = self.phi_processor.update(phi)
+        y = self.data_processor.update(data)
+        self.theta += self.eta * \
+            (np.matmul(self.phi.transpose(), y) -
             np.matmul(
             np.matmul(self.phi.transpose(), self.phi),
             self.theta))
 
-    def ridge(data, stimulus):
+    def ridge(self, data, stimulus):
+        '''
+        performs ridge regression with stimulus encoded by hashed
+        Gaussians as predictors.
+
+        required inputs are
+        - data: floating pint 2D array (time-by-voxels)
+            observed BOLD timecourses
+        - stimulus: floating point 2D array (time-by-pixels)
+            stimulus matrix
+        '''
+
+        phi = zscore(
+            self.__convolution__(
+            np.matmul(stimulus, self.gamma)))
+        self.theta = regress(data, phi, l = self.lambda)
+
+    def get_features(self):
+        '''
+        Returns
+        -------
+        floating point 2D array (pixels-by-features)
+            hashed Gaussian features
+        '''
+
+        return self.gamma
+
+    def get_weights(self):
+        '''
+        Returns
+        -------
+        loating point 2D array (features-by-voxels)
+            learned regression weights
+        '''
+
+        return self.theta
+
+    def get_parameters(self, n_batch = 10000,
+        max_radius = 10, alpha = 1, mask = []):
+        '''
+        estimates population receptive key (2D Gaussian) parameters
+        based on raw receptive keys given by features and their
+        regression weights.
+
+        returns a dictionary with the following keys
+        - corr_fit
+        - mu_x
+        - mu_y
+        - sigma
+        - eccentricity
+        - polar_angle
+
+        Each key is a column vector with number of voxels elements
+
+        optional inputs are
+        - n_batch: float
+            batch size                       (default = 10000)
+        - max_radius: integer
+            radius of measured visual key  (default =    10)
+        - alpha: float
+            shrinkage parameter              (default =     1)
+        - mask: boolean array
+            binary mask for selecting voxels (default =  None)
+        '''
+
+        print('\nestimating pRF parameters')
+
+        if mask == None:
+            mask = np.ones(self.n_voxels).astype(bool)
+        idx = np.arange(self.n_voxels)
+        idx = idx(mask)
+        n_msk = sum(mask)
+
+        results = {'mu_x': np.zeros(self.n_total),
+                   'mu_y': np.zeros(self.n_total),
+                   'sigma': np.zeros(self.n_total)}
+
+        xy = np.linspace(-max_radius, max_radius, self.r_stimulus)
+        [x_coordinates, y_coordinates] = np.meshgrid(xy,xy)
+        x_coordinates = x_coordinates.flatten()
+        y_coordinates = -y_coordinates.flatten()
+
+        s = np.linspace(1e-3, max_radius, 25)
+        r = np.linspace(0, np.sqrt(2 * max_radius**2), 25)
+        [S, R] = np.meshgrid(s,r)
+        S = S.flatten()
+        R = R.flatten()
+        I = np.zeros(625)
+
+        for in in range(625):
+            x = np.cos(np.pi / 4) * R[i]
+            x = np.sin(np.pi / 4) * R[i]
+            I[i] = np.mean(gaussian(x, y, S[i], x_coordinates, y_coordinates))
+
+        P = np.hstack((I, R))
+        beta = regress(S, P)
+
+        for v in np.arange(0, n_mask - n_batch, n_batch):
+            batch = idx[v: v + n_batch]
+            im = np.matmul(self.gamma, self.theta[:, batch])
+            pos = np.argmax(im, axis = 0)
+            mx = np.max(im, axis = 0)
+            mn = np.min(im, axis = 0)
+            range = mx - mn
+            im = ((im - mn) / range)**alpha
+            m_image = np.mean(im, axis = 0).transpose()
+
+            cx = np.floor(pos / self.r_stimulus)
+            cy = pos self.r_stimulus
+            results.mu_x[batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
+            results.mu_y[batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
+            R = np.sqrt(results.mu_x[batch]**2 + results.mu_y[batch]**2)
+            P = np.hstack((m_image, R))
+            results.sigma[batch] = np.matmul(P, beta)
+
+            i = int(v / n_mask* 21)
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-20s] %d%%"
+                             ('=' * i, 5 * i))
+
+            exist = 'v' in locals()
+            if exist==False:
+                batch = idx
+            else:
+                batch = idx[v:]
+
+            im = np.matmul(self.gamma, self.theta[:, batch])
+            pos = np.argmax(im, axis = 0)
+            mx = np.max(im, axis = 0)
+            mn = np.min(im, axis = 0)
+            range = mx - mn
+            im = ((im - mn) / range)**alpha
+            m_image = np.mean(im, axis = 0).transpose()
+
+            cx = np.floor(pos / self.r_stimulus)
+            cy = pos self.r_stimulus
+            results.mu_x[batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
+            results.mu_y[batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
+            R = np.sqrt(results.mu_x[batch]**2 + results.mu_y[batch]**2)
+            P = np.hstack((m_image, R))
+            results.sigma[batch] = np.matmul(P, beta)
+
+            i = int(v / n_mask* 21)
+            sys.stdout.write('\r')
+            sys.stdout.write("[%-20s] %d%%"
+                             ('=' * i, 5 * i))
+
+    def get_timecourses(self, stimulus):
+        '''
+        Parameters
+        ----------
+        stimulus: floating point 2D array (time-by-pixels)
+
+        Returns
+        -------
+        floating point 2D array (time-by-voxels)
+            predicted timecourses
+        '''
+
+        phi = zscore(
+            self.__convolution__(
+            np.matmul(stimulus, self.gamma)))
+
+        return np.matmul(phi, self.theta)
+
+    def set_parameters(self, parameters):
+        '''
+        parameters is a dictionary with 7 required keys
+          - f_sampling : sampling frequency (1/TR)
+          - r_stimulus : width & height of stimulus images in pixels
+          - n_features : number of features (hashed Gaussians)
+          - n_gaussians: number of Gaussians per feature
+          - n_voxels   : total number of voxels in data
+          - fwhm       : full width at half maximum of Gaussians
+          - eta        : learning rate (inverse of regularization parameter)
+        '''
+
+        self.p_sampling = 1 / parameters['f_sampling']
+        self.r_stimulus = parameters['r_stimulus']
+        self.n_pixels = self['r_stimulus']**2
+        self.n_features = parameters['n_features']
+        self.n_gaussians = parameters['n_gaussians']
+        self.n_voxels = parameters['n_voxels']
+        self.fwhm = parameters['fwhm'] * self.r_stimulus
+        self.eta = parameters['eta'] / self.n_features
+        self.lambda = 1 / self.eta;
+
+        self.__create_gamma__()
+
+    def reset(self):
+        '''
+        reset all internal states of the class
+
+        use this function prior to conducting real time estimation
+        for a new set of data
+        '''
+
+        timepoints = np.arange(0, self.l_hrf, self.p_sampling)
+        self.hrf = two_gamma(timepoints)
+        self.data_processor.reset()
+        self.phi_processor.reset()
+
+    def get_best_voxels():
+    function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
+
+    def __create_gamma__(self):
         '''
 
         '''
-        self.phi = zscore(
-            self.convolution(
-            np.matmul(stimulus,self.gamma)))
-        self.theta = regress(data, self.phi, l = self.lambda)
+
+        r = np.arange(self.r_stimulus)
+        [x_coordinates, y_coordinates] = np.meshgrid(r, r)
+        x_coordinates = x_coordinates.flatten()
+        y_coordinates = -y_coordinates.flatten()
+        sigma = self.fwhm / (2 * np.sqrt(2 * np.log(2)))
+        self.gamma = np.zeros((self.n_pixels, self.n_features))
+        pix_id = np.linspace(0, self.n_pixels, self.n_features * self.n_gaussians)
+
+
+
+    def __convolution__(self, x):
+        '''
+        Parameters
+        ----------
+        x: floating point 2D array (time-by-channels)
+
+        Returns
+        -------
+        floating point 2D array (time-channels)
+            x convolved with hemodynamic response function
+        '''
+
+        n_samples = x.shape[0]
+        kernel = np.vstack((self.hrf, np.zeros(n_samples)))
+        x = np.vstack((x, np.zeros((np.ceil(self.l_h / self.p_sampling),
+                                    self.n_features)))
+        x_conv = ifft(fft(x) * fft(kernel))
+        return x_conv[:n_samples]
