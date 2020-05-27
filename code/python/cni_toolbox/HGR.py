@@ -206,7 +206,7 @@ class HGR:
             y = np.sin(np.pi / 4) * R[i]
             I[i] = np.mean(gaussian(x, y, S[i], x_coordinates, y_coordinates))
 
-        P = np.hstack((I, R))
+        P = np.hstack((I.reshape(-1,1), R.reshape(-1,1)))
         beta = regress(S, P)
 
         for v in np.arange(0, n_mask - n_batch, n_batch):
