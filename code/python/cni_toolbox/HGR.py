@@ -215,8 +215,8 @@ class HGR:
             pos = np.argmax(im, axis = 0)
             mx = np.max(im, axis = 0)
             mn = np.min(im, axis = 0)
-            range = mx - mn
-            im = ((im - mn) / range)**alpha
+            val_range = mx - mn
+            im = ((im - mn) / val_range)**alpha
             m_image = np.mean(im, axis = 0).transpose()
 
             cx = np.floor(pos / self.r_stimulus)
