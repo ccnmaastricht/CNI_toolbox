@@ -201,7 +201,7 @@ class HGR:
         R = R.flatten()
         I = np.zeros(625)
 
-        for in in range(625):
+        for i in range(625):
             x = np.cos(np.pi / 4) * R[i]
             x = np.sin(np.pi / 4) * R[i]
             I[i] = np.mean(gaussian(x, y, S[i], x_coordinates, y_coordinates))
