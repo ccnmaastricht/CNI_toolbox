@@ -150,7 +150,8 @@ def correct_autocorr(X, W):
     return X_corrected
 
 class online_processor:
-     '''
+
+    '''
     Class for real time processing of fMRI data and stimulus respone.
 
     obj = online_processor(n_channels) creates an instance of the class.
@@ -170,9 +171,7 @@ class online_processor:
       - online_processor.reset()
         resets all variables tracking the signal
     '''
-
     def __init__(n_channels, sampling_rate = 2., l_kernel = 34):
-
         self.n_channels = n_channels
         self.p_sampling = sampling_rate
         self.l_kernel = l_kernel
@@ -249,7 +248,7 @@ class online_processor:
 
     def __update_sigma__(self, x):
         self.M2 += (x - self.previous_mean) * (x - self.mean)
-        if self.step ==1:
+        if self.step==1:
             self.sigma = np.sqrt(self.M2 / self.step)
         else:
             self.sigma = np.sqrt(self.M2 / (self.step - 1))
