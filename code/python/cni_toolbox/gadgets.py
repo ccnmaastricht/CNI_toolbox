@@ -200,7 +200,7 @@ class online_processor:
         '''
 
         x_fft = fft(np.vstack((x.reshape(1,-1), np.zeros((self.l_subsampled, self.n_channels)))), axis=0)
-        self.x_conv = np.append(self.x_conv, np.zeros(self.n_channels))
+        self.x_conv = np.vstack((self.x_conv, np.zeros((1, self.n_channels))))
         self.x_conv[self.step:self.step + self.l_subsampled, :] += np.abs(ifft(
             x_fft * np.expand_dims(self.kernel_fft , axis=1), axis=0))
 
