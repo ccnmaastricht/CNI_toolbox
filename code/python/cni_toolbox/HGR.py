@@ -350,7 +350,7 @@ class HGR:
         corr_fit = np.zeros((self.n_voxels, n_splits))
 
         for i in range(n_steps):
-            bound = (i + 1) * n_samples
+            bound = int((i + 1) * n_samples)
             train_data = zscore(data[:bound, :])
             train_stim = stimulus[:bound]
             test_data = zscore(data[bound:, :])
