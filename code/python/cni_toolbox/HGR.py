@@ -72,7 +72,7 @@ class HGR:
         self.l_hrf = l_kernel
         self.fwhm = parameters['fwhm'] * self.r_stimulus
         self.eta = parameters['eta'] / self.n_features
-        self.lambda = 1 / self.eta;
+        self.regularization = 1 / self.eta
 
         self.theta = np.zeros((self.n_features, self.n_voxels))
 
@@ -127,7 +127,7 @@ class HGR:
         phi = zscore(
             self.__convolution__(
             np.matmul(stimulus, self.gamma)))
-        self.theta = regress(data, phi, l = self.lambda)
+        self.theta = regress(data, phi, l = self.regularization)
 
     def get_features(self):
         '''
@@ -297,7 +297,7 @@ class HGR:
         self.n_voxels = parameters['n_voxels']
         self.fwhm = parameters['fwhm'] * self.r_stimulus
         self.eta = parameters['eta'] / self.n_features
-        self.lambda = 1 / self.eta;
+        self.regularization = 1 / self.eta;
 
         self.__create_gamma__()
 
