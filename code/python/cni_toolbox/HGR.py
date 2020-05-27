@@ -170,7 +170,7 @@ class HGR:
         - n_batch: float
             batch size                       (default = 10000)
         - max_radius: integer
-            radius of measured visual key  (default =    10)
+            radius of measured visual key    (default =    10)
         - alpha: float
             shrinkage parameter              (default =     1)
         - mask: boolean array
@@ -303,10 +303,10 @@ class HGR:
 
     def reset(self):
         '''
-        reset all internal states of the class
+        resets all internal states of the class
 
         use this function prior to conducting real time estimation
-        for a new set of data
+        for a new experimental run
         '''
 
         timepoints = np.arange(0, self.l_hrf, self.p_sampling)
@@ -315,11 +315,72 @@ class HGR:
         self.phi_processor.reset()
 
     def get_best_voxels():
-    function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
+        '''
+        uses blocked cross-validation to obtain the best fitting voxels
+
+        required inputs are
+         - data: floating point 2D array
+            empirically observed BOLD timecourses (time-by-voxels)
+         - stimulus: floating point 2D array
+            flattened stimulus matrix (time-by-pixels)
+
+        optional inputs are
+         - type: string
+            cutoff type           (default = 'percentile')
+         - cutoff: float
+            cutoff value          (default = 95)
+         - n_splits: int
+            number of data splits (default =  4)
+
+        Returns
+        -------
+        mask: boolean array
+            mask indicating best voxels
+        corr_fit: floating point array
+            cross-validated correlation fit
+        '''
+
+        n_time = data.shape[0]
+        n_steps = n_splits - 1
+        n_samples = np.floor(n_time / n_splits)
+
+        corr_fit = np.zeros(self.n_voxels, n_splits)
+
+        for i in range(n_steps):
+            bound = (i + 1) * n_samples
+            train_data = zscore(data[:bound, :])
+            train_stim = stimulus[:bound]
+            test_data = zscore(data[bound:, :])
+            test_stim = stimulus[bound:, :]
+
+            self.ridge(train_data, train_stim)
+            Y = self.get_timecourses(test_stim)
+            mag_Y = np.sqrt(np.sum(Y**2, axis=0))
+            mag_data = np.sqrt(np.sum(test_data**2, axis=0))
+            corr_fit[:, i] = np.sum(Y * test_data, axis=0) / (mag_Y * mag_data)
+
+        corr_fit = np.mean(corr_fit, axis=1)
+
+        if type=='percentile':
+            threshold = np.percentile(corr_fit, cutoff)
+        elif type=='threshold':
+            threshold = cutoff
+        elif type=='number':
+            corr_fit[np.isnan(corr_fit)] = -1
+            corr_fit[corr_fit==np.Inf] = -1
+            val = -np.sort(-corr_fit)
+            threshold = val[cutoff]
+        else:
+            raise ValueError('Wrong type: Choose either ''percentile'', ''number'' or ''threshold''')
+
+        mask = corr_fit>=threshold
+
+        return mask, corr_fit
+
 
     def __create_gamma__(self):
         '''
-
+        creates hashed Gaussian features
         '''
 
         r = np.arange(self.r_stimulus)
