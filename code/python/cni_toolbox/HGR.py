@@ -185,9 +185,9 @@ class HGR:
         idx = idx[mask]
         n_msk = sum(mask)
 
-        results = {'mu_x': np.zeros(self.n_total),
-                   'mu_y': np.zeros(self.n_total),
-                   'sigma': np.zeros(self.n_total)}
+        results = {'mu_x': np.zeros(self.n_voxels),
+                   'mu_y': np.zeros(self.n_voxels),
+                   'sigma': np.zeros(self.n_voxels)}
 
         xy = np.linspace(-max_radius, max_radius, self.r_stimulus)
         [x_coordinates, y_coordinates] = np.meshgrid(xy,xy)
