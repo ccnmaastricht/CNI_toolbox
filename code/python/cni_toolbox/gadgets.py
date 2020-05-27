@@ -199,10 +199,10 @@ class online_processor:
             convolved sample
         '''
 
-        x_fft = fft(np.vstack((x, np.zeros((self.l_subsampled, self.n_channels)))))
-        self.conv_x = np.vstack((self.conv_x, np.zeros(self.n_channels)))
-        self.conv_x[self.step:self.step + self.l_subsampled, :] += ifft(
-            x_fft * self.kernel_fft)
+        x_fft = fft(np.vstack((x, np.zeros((self.l_subsampled, self.n_channels)))), axis=0)
+        self.conv_x = np.append(self.conv_x, np.zeros(self.n_channels))
+        self.conv_x[self.step:self.step + self.l_subsampled, :] += np.abs(ifft(
+            x_fft * np.expand_dims(self.kernel_fft , axis=1), axis=0))
 
         return self.conv_x[self.step, :]
 
