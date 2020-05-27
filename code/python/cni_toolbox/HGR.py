@@ -232,32 +232,32 @@ class HGR:
             sys.stdout.write("[%-20s] %d%%"
                              ('=' * i, 5 * i))
 
-            exist = 'v' in locals()
-            if exist==False:
-                batch = idx
-            else:
-                batch = idx[v:]
+        exist = 'v' in locals()
+        if exist==False:
+            batch = idx
+        else:
+            batch = idx[v:]
 
-            im = np.matmul(self.gamma, self.theta[:, batch])
-            pos = np.argmax(im, axis = 0)
-            mx = np.max(im, axis = 0)
-            mn = np.min(im, axis = 0)
-            val_range = mx - mn
-            im = ((im - mn) / val_range)**alpha
-            m_image = np.mean(im, axis = 0).transpose()
+        im = np.matmul(self.gamma, self.theta[:, batch])
+        pos = np.argmax(im, axis = 0)
+        mx = np.max(im, axis = 0)
+        mn = np.min(im, axis = 0)
+        val_range = mx - mn
+        im = ((im - mn) / val_range)**alpha
+        m_image = np.mean(im, axis = 0).transpose()
 
-            cx = np.floor(pos / self.r_stimulus)
-            cy = pos % self.r_stimulus
-            results['mu_x'][batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
-            results['mu_y'][batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
-            R = np.sqrt(results['mu_x'][batch]**2 + results['mu_y'][batch]**2)
-            P = np.hstack((m_image, R))
-            results['sigma'][batch] = np.matmul(P, beta)
+        cx = np.floor(pos / self.r_stimulus)
+        cy = pos % self.r_stimulus
+        results['mu_x'][batch] = cx / self.r_stimulus * max_radius * 2 - max_radius
+        results['mu_y'][batch] = -cy / self.r_stimulus * max_radius * 2 - max_radius
+        R = np.sqrt(results['mu_x'][batch]**2 + results['mu_y'][batch]**2)
+        P = np.hstack((m_image, R))
+        results['sigma'][batch] = np.matmul(P, beta)
 
-            i = int(v / n_mask* 21)
-            sys.stdout.write('\r')
-            sys.stdout.write("[%-20s] %d%%"
-                             ('=' * i, 5 * i))
+        i = int(v / n_mask * 21)
+        sys.stdout.write('\r')
+        sys.stdout.write("[%-20s] %d%%"
+                         ('=' * i, 5 * i))
 
         return results
 
