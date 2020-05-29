@@ -203,7 +203,7 @@ classdef PEA < handle
                 
                 b = (Xc' * Xc) \ Xc' * Dc;
                 y = Xc * b;
-                mu = mean(DC);
+                mu = mean(Dc);
                 MSM = (y-mu)'*(y-mu)/df1;
                 MSE = (y-Dc)'*(y-Dc)/df2;
                 
