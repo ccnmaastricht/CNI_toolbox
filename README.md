@@ -21,6 +21,14 @@ Download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://git
 ```MATLAB
 matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx');
 ```
+### Usage
+
+* [Data Handling](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Data-Handling-(Matlab))
+* [Phase Encoding Analysis](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Phase-Encoding-Analysis-(Matlab))
+* [Population Receptive Field Mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Population-Receptive-Field-Mapping-(Matlab))
+* [Input Referred Models](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Input-Referred-Models-(Matlab))
+* [Fast & real-time pRF mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Fast-&-real-time-pRF-mapping-(Matlab))
+
 ## Python implementation
 ![](https://img.shields.io/badge/release-v1.0.0-blueviolet.svg?style=flat)
 
@@ -29,3 +37,11 @@ matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx')
 ```Python
 pip install cni-tlbx
 ```
+
+### Usage
+
+* [Data Handling](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Data-Handling-(Python))
+* [Phase Encoding Analysis](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Phase-Encoding-Analysis-(Python))
+* [Population Receptive Field Mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Population-Receptive-Field-Mapping-(Python))
+* [Input Referred Models](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Input-Referred-Models-(Python))
+* [Fast & real-time pRF mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Fast-&-real-time-pRF-mapping-(Python))
