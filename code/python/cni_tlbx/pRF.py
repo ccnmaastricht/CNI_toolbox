@@ -26,7 +26,7 @@ import tkinter as tk
 from tkinter import filedialog
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_toolbox.gadgets import two_gamma
+from cni_toolbox.gadgets import two_gamma, gaussian
 
 
 class pRF:
@@ -44,7 +44,7 @@ class pRF:
 
     Optional inputs are
       - hrf       : either a vector containing a single hemodynamic response used for every voxel;
-                    or a matrix with a unique hemodynamic response along its columns for each voxel.
+                    or a tensor with a unique hemodynamic response along its columns for each voxel.
                     By default the canonical two-gamma hemodynamic response function is used.
 
     This class has the following functions
@@ -77,7 +77,7 @@ class pRF:
 
         if hrf is not None:
             self.l_hrf = hrf.shape[0]
-            if hrf.ndim > 2:
+            if hrf.ndim > 1:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
                 self.hrf_fft = fft(np.vstack((hrf,
                                               np.zeros((self.n_samples,
@@ -88,35 +88,12 @@ class pRF:
                                              np.zeros(self.n_samples)),
                                    axis=0)
         else:
-            self.l_hrf = int(32 * self.f_sampling)
+            self.l_hrf = int(34 * self.f_sampling)
             timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
-                                                      self.l_hrf) - 1,
+                                                      self.l_hrf),
                                    self.p_sampling)
             self.hrf_fft = fft(two_gamma(timepoints), axis=0)
-
-    @staticmethod
-    def __gaussian__(mu_x, mu_y, sigma, x, y):
-        '''
-        Parameters
-        ----------
-        mu_x: float
-            center of Gaussian along x direction
-        mu_y: float
-            center of Gaussian along y direction
-        sigma: float
-            spread of Gaussian
-        x: floating point array (1D)
-            x-coordinates
-        y: floating point array (1D)
-            y-coordinates
-
-        Returns
-        -------
-        floating point array
-        '''
-
-        return np.exp(-((x - mu_x)**2 + (y - mu_y)**2) / (2 * sigma**2))
 
     def get_hrf(self):
         '''
@@ -157,7 +134,7 @@ class pRF:
         '''
         Returns
         -------
-        floating point array (time-by-gridsize)
+        floating point array (time-by-grid size)
             predicted timecourses
         '''
 
@@ -171,7 +148,7 @@ class pRF:
             hemodynamic response function
         '''
         self.l_hrf = hrf.shape[0]
-        if hrf.ndim > 2:
+        if hrf.ndim > 1:
             hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
             self.hrf_fft = fft(np.vstack((hrf,
                                           np.zeros((self.n_samples,
@@ -183,16 +160,20 @@ class pRF:
                                axis=0)
 
     def set_stimulus(self, stimulus):
-        self.stimulus = np.zeros((self.n_samples + self.l_hrf,
-                                  self.n_total))
+        '''
+        Parameters
+        ----------
+        stimulus : floating point array
+        '''
         if stimulus.ndim == 3:
-            self.stimulus[0:self.n_samples, :] = np.reshape(
+            self.stimulus = np.reshape(
                 stimulus, (self.r_stimulus**2, self.n_samples))
         else:
-            self.stimulus[0:self.n_samples, :] = stimulus
+            self.stimulus = stimulus
+        self.stimulus = np.hstack((self.stimulus,
+                                   np.zeros((self.r_stimulus**2, self.l_hrf))))
 
     def import_stimulus(self):
-
         root = tk.Tk()
         stimulus_directory = ''.join(filedialog.askdirectory(
             title='Please select the stimulus directory'))
@@ -242,7 +223,9 @@ class pRF:
          - css_exponent: float
              compressive spatial summation   (default = 1)
          - sampling: string
-             eccentricity sampling           (default = log)
+             eccentricity sampling
+             > 'log '(default)
+             > 'linear'
         '''
         print('\ncreating timecourses')
 
@@ -284,8 +267,7 @@ class pRF:
             x = np.cos(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             y = np.sin(self.pa[self.idx[p, 0]]) * self.ecc[self.idx[p, 1]]
             sigma = self.ecc[self.idx[p, 1]] * self.slope[self.idx[p, 2]]
-            W[p, :] = self.__gaussian__(
-                x, y, sigma, x_coordinates, y_coordinates)
+            W[p, :] = gaussian(x, y, sigma, x_coordinates, y_coordinates)
 
             i = int(p / self.n_points * 19)
             sys.stdout.write('\r')
@@ -319,9 +301,9 @@ class pRF:
 
         Optional inputs are
          - threshold: float
-             minimum voxel intensity (default = 100.0)
+             minimum voxel intensity          (default = 100.0)
          - mask: boolean array
-             binary mask for selecting voxels (default = None)
+             binary mask for selecting voxels (default = [])
         '''
         print('\nmapping receptive fields')
 
@@ -406,6 +388,9 @@ class pRF:
                     self.slope[self.idx[idx_best, 2]]
 
                 i = int(m / n_voxels * 21)
+                sys.stdout.write('\r')
+                sys.stdout.write("[%-20s] %d%%"
+                                 % ('=' * i, 5 * i))
 
         for key in results:
             results[key] = np.squeeze(

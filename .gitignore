@@ -5,3 +5,5 @@ model/
 VF2Cort.m
 *pipeline*
 *workspace*
+*cache*
+*pyc

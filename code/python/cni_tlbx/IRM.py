@@ -39,7 +39,7 @@ class IRM:
     optional inputs are
       - hrf       : either a column vector containing a single hemodynamic
                     response used for every voxel;
-                    or a matrix with a unique hemodynamic response along
+                    or a tensor with a unique hemodynamic response along
                     its columns for each voxel.
                     By default the canonical two-gamma hemodynamic response
                     function is generated internally based on the scan parameters.
@@ -73,7 +73,7 @@ class IRM:
 
         if hrf != None:
             self.l_hrf = hrf.shape[0]
-            if hrf.ndim>2:
+            if hrf.ndim>1:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
                 self.hrf_fft = fft(np.vstack((hrf,
                                       np.zeros((self.n_samples,
@@ -84,7 +84,7 @@ class IRM:
                                      np.zeros(self.n_samples)),
                                    axis = 0 )
         else:
-            self.l_hrf = int(32 * self.f_sampling)
+            self.l_hrf = int(34 * self.f_sampling)
             timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
                                                       self.l_hrf) - 1,
@@ -126,7 +126,7 @@ class IRM:
         '''
         Returns
         -------
-        floating point array (time-by-gridsize)
+        floating point array (time-by-grid size)
             predicted timecourses
         '''
 
@@ -140,7 +140,7 @@ class IRM:
             hemodynamic response function
         '''
         self.l_hrf = hrf.shape[0]
-        if hrf.ndim>2:
+        if hrf.ndim>1:
             hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
             self.hrf_fft = fft(np.vstack((hrf,
                                      np.zeros((self.n_samples,
@@ -169,8 +169,8 @@ class IRM:
         - FUN: function handle
             defining the input referred model
         - xdata: dictionary with p elements (p = number of parameters).
-            Each cell element needs to contain a column vector
-            of variable length with parameter values to be explored.
+            Each element needs to contain a column vector of variable
+            length with parameter values to be explored.
         '''
         print('\ncreating timecourses')
 
@@ -219,9 +219,9 @@ class IRM:
 
         Optional inputs are
          - threshold: float
-             minimum voxel intensity (default = 100.0)
+             minimum voxel intensity          (default = 100.0)
          - mask: boolean array
-             binary mask for selecting voxels (default = None)
+             binary mask for selecting voxels (default = []])
         '''
         print('\nmapping model parameters')
 

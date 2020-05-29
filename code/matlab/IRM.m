@@ -26,6 +26,7 @@ classdef IRM < handle
     % Input-referred model (IRM) mapping tool.
     %
     % irm = IRM(parameters) creates an instance of the IRM class.
+    %
     % parameters is a structure with 5 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - n_samples : number of samples (volumes)
@@ -36,7 +37,7 @@ classdef IRM < handle
     % optional inputs are
     %   - hrf       : either a column vector containing a single hemodynamic
     %                 response used for every voxel;
-    %                 or a matrix with a unique hemodynamic response along
+    %                 or a tensor with a unique hemodynamic response along
     %                 its columns for each voxel.
     %                 By default the canonical two-gamma hemodynamic response
     %                 function is generated internally based on the scan parameters.
@@ -61,8 +62,6 @@ classdef IRM < handle
     % 4. results = irm.mapping(data);
     
     properties (Access = private)
-        
-        is
         
         % functions
         two_gamma               % two gamma hrf function
@@ -93,27 +92,25 @@ classdef IRM < handle
             addRequired(p,'parameters',@isstruct);
             addOptional(p,'hrf',[]);
             p.parse(parameters,varargin{:});
-            
-            self.is = 'input-referred modeling tool';
-            
+
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             
-            self.f_sampling = p.Results.parameters.f_sampling;
+            self.f_sampling = p.corr_fitesults.parameters.f_sampling;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = p.Results.parameters.n_samples;
-            self.n_rows = p.Results.parameters.n_rows;
-            self.n_cols = p.Results.parameters.n_cols;
-            self.n_slices = p.Results.parameters.n_slices;
+            self.n_samples = p.corr_fitesults.parameters.n_samples;
+            self.n_rows = p.corr_fitesults.parameters.n_rows;
+            self.n_cols = p.corr_fitesults.parameters.n_cols;
+            self.n_slices = p.corr_fitesults.parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             
-            if ~isempty(p.Results.hrf)
-                self.l_hrf = size(p.Results.hrf,1);
-                if ndims(p.Results.hrf)==4
-                    self.hrf = reshape(p.Results.hrf,...
+            if ~isempty(p.corr_fitesults.hrf)
+                self.l_hrf = size(p.corr_fitesults.hrf,1);
+                if ndims(p.corr_fitesults.hrf)==4
+                    self.hrf = reshape(p.corr_fitesults.hrf,...
                         self.l_hrf,self.n_total);
                 else
-                    self.hrf = p.Results.hrf;
+                    self.hrf = p.corr_fitesults.hrf;
                 end
                 
             else
@@ -128,7 +125,7 @@ classdef IRM < handle
             % If a single hrf is used for every voxel, this function
             % returns a column vector.
             % If a unique hrf is used for each voxel, this function returns
-            % a matrix with columns corresponding to time and the remaining
+            % a tensor with rows corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
@@ -154,12 +151,12 @@ classdef IRM < handle
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a matrix whose columns correspond to time.
-            % The remaining dimensionsneed to match those of the data.
+            % or a tensor whose rows correspond to time.
+            % The remaining dimensions need to match those of the data.
             self.l_hrf = size(hrf,1);
-            if ndims(hrf)==4
+            if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
-            else
+%             else
                 self.hrf = hrf;
             end
         end
@@ -179,9 +176,8 @@ classdef IRM < handle
             %          parameters).
             %          Each cell element needs to contain a column vector
             %          of variable length with parameter values to be explored.
-            text = 'creating timecourses...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            
+            progress('performing phase encoding analysis')
             
             self.xdata = xdata;
             self.n_predictors = numel(xdata);
@@ -198,41 +194,38 @@ classdef IRM < handle
                     n_observations(p)) + 1;
             end
             
-            tc = zeros(self.n_samples,self.n_points);
+            tc = zeros(self.n_samples + self.l_hrf,self.n_points);
             x = zeros(self.n_predictors,1);
             for j=1:self.n_points
                 for p=1:self.n_predictors
                     x(p) = self.xdata{p}(self.idx(j,p));
                 end
-                tc(:,j) = FUN(self.stimulus,x);
-                waitbar(j/self.n_points,wb);
+                tc(1:self.n_samples,j) = FUN(self.stimulus,x);
+                
+                progress(j / self.n_points * 20);
             end
             self.tc_fft = fft(tc);
-            close(wb)
-            fprintf('done\n');
+            
         end
         
         function results = mapping(self,data,varargin)
             % identifies the best fitting timecourse for each voxel and
             % returns the corresponding parameter values of the
             % input-referred model. The class returns a structure with two
-            % fields.
-            %  - R: correlations (fit) - dimension corresponds to the
-            %       dimensions of the data.
-            %  - P: estimate parameters - dimension corresponds to the
+            % fields
+            %  - corr_fit
+            %  - P: estimated parameters - dimension corresponds to the
             %       dimensions of the data + 1.
             %
             % required inputs are
-            %  - data  : a matrix of empirically observed BOLD timecourses
+            %  - data  : a tensor of empirically observed BOLD timecourses
             %            whose columns correspond to time (volumes).
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
             %  - mask     : binary mask for selecting voxels
             
-            text = 'mapping input-referred model...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('mapping input-referred model')
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -240,9 +233,9 @@ classdef IRM < handle
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
-            data = single(p.Results.data);
-            threshold = p.Results.threshold;
-            mask = p.Results.mask;
+            data = single(p.corr_fitesults.data);
+            threshold = p.corr_fitesults.threshold;
+            mask = p.corr_fitesults.mask;
             
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
@@ -259,14 +252,14 @@ classdef IRM < handle
             data = zscore(data(:,mask));
             mag_d = sqrt(sum(data.^2));
             
-            results.R = zeros(self.n_total,1);
+            results.corr_fit = zeros(self.n_total,1);
             results.P = zeros(self.n_total,self.n_predictors);
             
             if size(self.hrf,2)==1
                 hrf_fft = fft([self.hrf;...
-                    zeros(self.n_samples-self.l_hrf,1)]);
-                tc = zscore(ifft(self.tc_fft.*hrf_fft))';
-                
+                    zeros(self.n_samples,1)]);
+                tc = ifft(self.tc_fft.*hrf_fft);
+                tc = zscore(tc(1:self.n_samples, :))';
                 mag_tc = sqrt(sum(tc.^2,2));
                 for m=1:n_voxels
                     v = voxel_index(m);
@@ -275,40 +268,41 @@ classdef IRM < handle
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
-                    [results.R(v),j] = max(CS);
+                    [results.corr_fit(v),j] = max(CS);
                     for p=1:self.n_predictors
                         results.P(v,p) = self.xdata{p}(self.idx(j,p));
                     end
                     
-                    waitbar(m/n_voxels,wb)
+                    progress(m / n_voxels * 20)
                 end
             else
                 hrf_fft_all = fft([self.hrf(:,mask);...
-                    zeros(self.n_samples-self.l_hrf,n_voxels)]);
+                    zeros(self.n_samples,n_voxels)]);
                 for m=1:n_voxels
                     v = voxel_index(m);
                     
-                    tc = zscore(ifft(self.tc_fft.*hrf_fft_all(:,m)))';
+                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
+                    tc = zscore(tc(1:self.n_samples, :))';
                     mag_tc = sqrt(sum(tc.^2,2));
                     
                     CS = (tc*data(:,m))./...
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
-                    [results.R(v),j] = max(CS);
+                    [results.corr_fit(v),j] = max(CS);
                     for p=1:self.n_predictors
                         results.P(v,p) = self.xdata(self.idx(j,p),p);
                     end
                     
-                    waitbar(m/n_voxels,wb)
+                    progress(m / n_voxels * 20)
                 end
             end
-            results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
+            results.corr_fit = reshape(results.corr_fit,...
+                self.n_rows,self.n_cols,self.n_slices);
             results.P = squeeze(...
                 reshape(...
                 results.P,self.n_rows,self.n_cols,self.n_slices,self.n_predictors));
-            close(wb)
-            fprintf('done\n');
+
         end
     end
 end

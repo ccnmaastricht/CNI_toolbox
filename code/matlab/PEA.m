@@ -23,9 +23,10 @@ classdef PEA < handle
     % %%%                             DESCRIPTION                           %%%
     % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %
-    % Phase-encoding analysis tool.
+    % phase-encoding analysis tool.
     %
     % pea = PEA(parameters) creates an instance of the PEA class.
+    %
     % parameters is a structure with 7 required fields
     %   - f_sampling: sampling frequency (1/TR)
     %   - f_stim    : stimulation frequency
@@ -54,8 +55,6 @@ classdef PEA < handle
     
     properties (Access = private)
         
-        is
-        
         % parameters
         f_sampling
         f_stim
@@ -76,7 +75,6 @@ classdef PEA < handle
         
         function self = PEA(parameters)
             % constructor
-            self.is = 'PEA tool';
             
             self.f_sampling = parameters.f_sampling;
             self.f_stim = parameters.f_stim;
@@ -133,27 +131,25 @@ classdef PEA < handle
         end
         
         function results = fitting(self,data,varargin)
-            % identifies phase and amplitude at stimulation frequency for
+            % identifies phase and ampltitude at stimulation frequency for
             % each voxel and returns a structure with the following fields
-            %  - Phase
-            %  - Amplitude
-            %  - F_statistic
-            %  - P_value
+            %  - phase
+            %  - ampltitude
+            %  - f_statistic
+            %  - p_value
             %
             % the dimension of each field corresponds to the dimensions of
             % the data.
             %
             % required inputs are
-            %  - data  : a matrix of empirically observed BOLD timecourses
-            %            whose columns correspond to time (volumes).
+            %  - data  : a tensor of empirically observed BOLD timecourses
+            %            whose rows correspond to time (volumes).
             %
             % optional inputs are
             %  - threshold: minimum voxel intensity (default = 100.0)
             %  - mask     : binary mask for selecting voxels
             
-            text = 'performing phase encoding analysis...';
-            fprintf('%s\n',text)
-            wb = waitbar(0,text,'Name',self.is);
+            progress('performing phase encoding analysis')
             
             p = inputParser;
             addRequired(p,'data',@isnumeric);
@@ -187,10 +183,10 @@ classdef PEA < handle
             Y_ = X * beta;
             residuals = data - Y_;
             
-            results.Phase = zeros(self.n_total,1);
-            results.Amplitude = zeros(self.n_total,1);
+            results.phase = zeros(self.n_total,1);
+            results.ampltitude = zeros(self.n_total,1);
             results.F_stat = zeros(self.n_total,1);
-            results.P_value = ones(self.n_total,1);
+            results.p_value = ones(self.n_total,1);
             
             df1 = 1;
             df2 = self.n_samples-2;
@@ -207,29 +203,27 @@ classdef PEA < handle
                 
                 b = (Xc' * Xc) \ Xc' * Dc;
                 y = Xc * b;
-                mu = mean(DC);
+                mu = mean(Dc);
                 MSM = (y-mu)'*(y-mu)/df1;
                 MSE = (y-Dc)'*(y-Dc)/df2;
                 
-                results.Phase(v) = angle(b(1)+b(2)*1i);
-                results.Amplitude(v) = abs(b(1)+b(2)*1i);
+                results.phase(v) = angle(b(1)+b(2)*1i);
+                results.ampltitude(v) = abs(b(1)+b(2)*1i);
                 results.F_stat(v) = MSM/MSE;
-                results.P_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
+                results.p_value(v) = max(1-fcdf(MSM/MSE,df1,df2),1e-20);
                 
-                waitbar(m/n_voxels,wb)
+                progress(m / n_voxels * 20)
             end
             
-            results.Phase = reshape(results.Phase,...
+            results.phase = reshape(results.phase,...
                 self.n_rows,self.n_cols,self.n_slices);
-            results.Amplitude = reshape(results.Amplitude,...
+            results.ampltitude = reshape(results.ampltitude,...
                 self.n_rows,self.n_cols,self.n_slices);
             results.F_stat = reshape(results.F_stat,...
                 self.n_rows,self.n_cols,self.n_slices);
-            results.P_value = reshape(results.P_value,...
+            results.p_value = reshape(results.p_value,...
                 self.n_rows,self.n_cols,self.n_slices);
             
-            close(wb)
-            fprintf('done\n');
         end
         
     end
