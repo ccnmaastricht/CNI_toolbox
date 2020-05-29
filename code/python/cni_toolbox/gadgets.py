@@ -72,6 +72,24 @@ def two_gamma(timepoints):
 
     return hrf
 
+def size(x,length):
+    '''
+    Parameters
+    ----------
+    x : floating point array of unknown dimension
+    length: integer
+
+    Returns
+    -------
+    out : integer array with 'length' elements
+        size in each of 'length' dimensions
+    '''
+
+    out = np.ones(length)
+    dims = x.ndim
+    out[:dims] = x.shape
+    
+    return out.astype(int)
 
 def regress(Y, X, l = 0.):
     '''
@@ -136,7 +154,6 @@ def correct_autocorr(X, W):
     X_corrected: floating point array (2D)
         timecourses corrected for autocorrelation
     '''
-
     rows, cols = size(X, 2)
     X = np.reshape(X, (rows, cols))
     X_corrected = np.zeros((rows, cols))
