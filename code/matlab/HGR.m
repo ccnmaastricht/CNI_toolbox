@@ -38,7 +38,7 @@ classdef HGR < handle
     %   - eta        : learning rate (inverse of regularization parameter)
     %
     % optional inputs are
-    %   - l_kernel   : length of convolution kernel (two-gamma hresults)
+    %   - l_kernel   : length of convolution kernel (two-gamma hrf)
     %
     % this class has the following functions
     %
@@ -177,8 +177,8 @@ classdef HGR < handle
 
         function results = get_parameters(self,varargin)
             % estimates population receptive field (2D Gaussian) parameters
-            % based on raw receptive fields given by features and their
-            % regression weights.
+            % based on receptive fields given by linear combination of 
+            % features and their weighted by their regression coefficients.
             %
             % returns a structure with the following fields
             %  - corr_fit
@@ -188,7 +188,7 @@ classdef HGR < handle
             %  - eccentricity
             %  - polar_angle
             %
-            % each field is a column vector with number of voxels elements
+            % each field is a column vector with elements = number of voxels
             %
             % optional inputs are
             %  - n_batch   : batch size                       (default = 10000)
@@ -256,8 +256,7 @@ classdef HGR < handle
 
                 results.sigma(batch) = [m_image, sqrt(results.mu_x(batch).^2 +...
                     results.mu_y(batch).^2)] * beta;
-               
-                
+                  
             end
            
             if isempty(v)
@@ -294,7 +293,7 @@ classdef HGR < handle
             % change parameters of the class
             %
             % required input
-            %  - parameters: a structure containing all parameters required
+            %  - parameters: a structure containing all parameters
             %                required by the class
             
             self.r_stimulus = parameters.r_stimulus;
@@ -312,16 +311,15 @@ classdef HGR < handle
             % reset all internal states of the class
             %             
             % use this function prior to conducting real time estimation
-            % for a new set of data
+            % for a new set of data (new run)
             self.theta = zeros(self.n_features,self.n_voxels);
             self.phi_processor.reset();
             self.data_processor.reset();
         end
 
         function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
-            % uses blocked cross-validation to obtain the best fitting
-            % voxels and returns a mask as well the correlation fit per
-            % voxel
+            % uses blocked cross-validation to obtain the best voxels
+            % and returns a binary mask as well the correlation fit per voxel
             %
             % required inputs are
             %  - data    : a matrix of empirically observed BOLD timecourses
@@ -329,7 +327,11 @@ classdef HGR < handle
             %  - stimulus: a time by number of pixels stimulus matrix.
             %
             % optional inputs are
-            %  - type    : cutoff type           (default = 'percentile')
+            %  - type    : cutoff type
+            %              > 'percentile' (default)
+            %              > 'threshold'
+            %              > 'number'
+            %              
             %  - cutoff  : cutoff value          (default = 95)
             %  - n_splits: number of data splits (default = 4)
             

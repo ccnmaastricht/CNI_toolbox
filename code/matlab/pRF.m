@@ -38,10 +38,10 @@ classdef pRF < handle
     % optional inputs are
     %   - hrf       : either a column vector containing a single hemodynamic
     %                 response used for every voxel;
-    %                 or a matrix with a unique hemodynamic response along
+    %                 or a tensor with a unique hemodynamic response along
     %                 its columns for each voxel.
     %                 By default the canonical two-gamma hemodynamic response
-    %                 function is generated internally based on the scan parameters.
+    %                 function is generated internally based on provided parameters.
     %
     % this class has the following functions
     %
@@ -133,7 +133,7 @@ classdef pRF < handle
             % If a single hrf is used for every voxel, this function
             % returns a column vector.
             % If a unique hrf is used for each voxel, this function returns
-            % a matrix with rows corresponding to time and the remaining
+            % a tensor with rows corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
@@ -144,8 +144,8 @@ classdef pRF < handle
         end
         
         function stimulus = get_stimulus(self)
-            % returns the stimulus used by the class as a 3D matrix of
-            % dimensions height-by-width-by-time.
+            % returns the stimulus used by the class as a tensor
+            % of rank 3 (height-by-width-by-time).
             stimulus = reshape(self.stimulus,self.r_stimulus,...
                 self.r_stimulus,self.n_samples);
         end
@@ -161,8 +161,8 @@ classdef pRF < handle
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a matrix whose rows correspond to time.
-            % The remaining dimensionsneed to match those of the data.
+            % or a tensor whose rows correspond to time.
+            % The remaining dimensions need to match those of the data.
             self.l_hrf = size(hrf,1);
             if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
@@ -172,11 +172,11 @@ classdef pRF < handle
         end
         
         function set_stimulus(self,stimulus)
-            % provide a stimulus matrix.
+            % provide a stimulus.
             % This is useful if the .png files have already been imported
             % and stored in matrix form.
-            % Note that the provided stimulus matrix can be either 3D
-            % (height-by-width-by-time) or 2D (height*width-by-time).
+            % Note that the provided stimulus tensor can be either rank 3
+            % (height-by-width-by-time) or rank 2 (height*width-by-time).
             if ndims(stimulus)==3
                 self.stimulus = reshape(stimulus,...
                     self.r_stimulus^2,...
@@ -192,7 +192,7 @@ classdef pRF < handle
             % imports a series of .png files constituting the stimulation
             % protocol of the pRF experiment.
             % This series is stored internally in matrix format
-            % (height-by-width-by-time).
+            % (height*width-by-time).
             % The stimulus is required to generate timecourses.
             
             [~,path] = uigetfile('*.png',...
@@ -238,7 +238,9 @@ classdef pRF < handle
             %  - min_slope   : lower bound of RF size slope    (default =   0.1)
             %  - max_slope   : upper bound of RF size slope    (default =   1.2)
             %  - css_exponent: compressive spatial summation   (default =   1.0)
-            %  - sampling    : eccentricity sampling type      (default = 'log')
+            %  - sampling    : eccentricity sampling type
+            %                  > 'log' (default)
+            %                  > 'linear'
             
             progress('creating timecourses');
             
@@ -314,7 +316,7 @@ classdef pRF < handle
             % of the data.
             %
             % required inputs are
-            %  - data  : a matrix of empirically observed BOLD timecourses
+            %  - data  : a tensor of empirically observed BOLD timecourses
             %            whose rows correspond to time (volumes).
             %
             % optional inputs are

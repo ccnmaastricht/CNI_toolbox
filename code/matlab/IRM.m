@@ -37,7 +37,7 @@ classdef IRM < handle
     % optional inputs are
     %   - hrf       : either a column vector containing a single hemodynamic
     %                 response used for every voxel;
-    %                 or a matrix with a unique hemodynamic response along
+    %                 or a tensor with a unique hemodynamic response along
     %                 its columns for each voxel.
     %                 By default the canonical two-gamma hemodynamic response
     %                 function is generated internally based on the scan parameters.
@@ -96,21 +96,21 @@ classdef IRM < handle
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             
-            self.f_sampling = p.Results.parameters.f_sampling;
+            self.f_sampling = p.corr_fitesults.parameters.f_sampling;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = p.Results.parameters.n_samples;
-            self.n_rows = p.Results.parameters.n_rows;
-            self.n_cols = p.Results.parameters.n_cols;
-            self.n_slices = p.Results.parameters.n_slices;
+            self.n_samples = p.corr_fitesults.parameters.n_samples;
+            self.n_rows = p.corr_fitesults.parameters.n_rows;
+            self.n_cols = p.corr_fitesults.parameters.n_cols;
+            self.n_slices = p.corr_fitesults.parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             
-            if ~isempty(p.Results.hrf)
-                self.l_hrf = size(p.Results.hrf,1);
-                if ndims(p.Results.hrf)==4
-                    self.hrf = reshape(p.Results.hrf,...
+            if ~isempty(p.corr_fitesults.hrf)
+                self.l_hrf = size(p.corr_fitesults.hrf,1);
+                if ndims(p.corr_fitesults.hrf)==4
+                    self.hrf = reshape(p.corr_fitesults.hrf,...
                         self.l_hrf,self.n_total);
                 else
-                    self.hrf = p.Results.hrf;
+                    self.hrf = p.corr_fitesults.hrf;
                 end
                 
             else
@@ -125,7 +125,7 @@ classdef IRM < handle
             % If a single hrf is used for every voxel, this function
             % returns a column vector.
             % If a unique hrf is used for each voxel, this function returns
-            % a matrix with rows corresponding to time and the remaining
+            % a tensor with rows corresponding to time and the remaining
             % dimensions reflecting the spatial dimensions of the data.
             if size(self.hrf,2)>1
                 hrf = reshape(self.hrf,self.l_hrf,...
@@ -151,8 +151,8 @@ classdef IRM < handle
         
         function set_hrf(self,hrf)
             % replace the hemodynamic response with a new hrf column vector
-            % or a matrix whose rows correspond to time.
-            % The remaining dimensionsneed to match those of the data.
+            % or a tensor whose rows correspond to time.
+            % The remaining dimensions need to match those of the data.
             self.l_hrf = size(hrf,1);
             if ndims(hrf)>2
                 self.hrf = reshape(hrf,self.l_hrf,self.n_total);
@@ -212,14 +212,13 @@ classdef IRM < handle
             % identifies the best fitting timecourse for each voxel and
             % returns the corresponding parameter values of the
             % input-referred model. The class returns a structure with two
-            % fields.
-            %  - R: correlations (fit) - dimension corresponds to the
-            %       dimensions of the data.
-            %  - P: estimate parameters - dimension corresponds to the
+            % fields
+            %  - corr_fit
+            %  - P: estimated parameters - dimension corresponds to the
             %       dimensions of the data + 1.
             %
             % required inputs are
-            %  - data  : a matrix of empirically observed BOLD timecourses
+            %  - data  : a tensor of empirically observed BOLD timecourses
             %            whose columns correspond to time (volumes).
             %
             % optional inputs are
@@ -234,9 +233,9 @@ classdef IRM < handle
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
-            data = single(p.Results.data);
-            threshold = p.Results.threshold;
-            mask = p.Results.mask;
+            data = single(p.corr_fitesults.data);
+            threshold = p.corr_fitesults.threshold;
+            mask = p.corr_fitesults.mask;
             
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
@@ -253,7 +252,7 @@ classdef IRM < handle
             data = zscore(data(:,mask));
             mag_d = sqrt(sum(data.^2));
             
-            results.R = zeros(self.n_total,1);
+            results.corr_fit = zeros(self.n_total,1);
             results.P = zeros(self.n_total,self.n_predictors);
             
             if size(self.hrf,2)==1
@@ -269,7 +268,7 @@ classdef IRM < handle
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
-                    [results.R(v),j] = max(CS);
+                    [results.corr_fit(v),j] = max(CS);
                     for p=1:self.n_predictors
                         results.P(v,p) = self.xdata{p}(self.idx(j,p));
                     end
@@ -290,7 +289,7 @@ classdef IRM < handle
                         (mag_tc*mag_d(m));
                     id = isinf(CS) | isnan(CS);
                     CS(id) = 0;
-                    [results.R(v),j] = max(CS);
+                    [results.corr_fit(v),j] = max(CS);
                     for p=1:self.n_predictors
                         results.P(v,p) = self.xdata(self.idx(j,p),p);
                     end
@@ -298,7 +297,8 @@ classdef IRM < handle
                     progress(m / n_voxels * 20)
                 end
             end
-            results.R = reshape(results.R,self.n_rows,self.n_cols,self.n_slices);
+            results.corr_fit = reshape(results.corr_fit,...
+                self.n_rows,self.n_cols,self.n_slices);
             results.P = squeeze(...
                 reshape(...
                 results.P,self.n_rows,self.n_cols,self.n_slices,self.n_predictors));
