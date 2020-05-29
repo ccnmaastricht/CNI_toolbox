@@ -10,7 +10,8 @@ The Computational Neuroimaging Toolbox contains tools for estimating input-refer
 This code is hosted at https://github.com/ccnmaastricht/CNI_toolbox
 The latest version may always be found here.
 
-## Matlab implementation ![](https://img.shields.io/badge/release-v2.0.0-blueviolet.svg?style=flat)
+## Matlab implementation
+![](https://img.shields.io/badge/release-v2.0.0-blueviolet.svg?style=flat)
 
 This software was developed with MATLAB R2017a and access to the full suite of MATLAB add-on packages. Some of these packages may be required to run the software.
 
@@ -20,7 +21,8 @@ Download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://git
 ```MATLAB
 matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx');
 ```
-## Python implementation ![](https://img.shields.io/badge/release-v1.0.0-blueviolet.svg?style=flat)
+## Python implementation
+![](https://img.shields.io/badge/release-v1.0.0-blueviolet.svg?style=flat)
 
 ### Installation
 
