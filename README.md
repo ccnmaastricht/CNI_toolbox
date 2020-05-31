@@ -16,7 +16,7 @@ The latest version may always be found here.
 This software was developed with MATLAB R2017a and access to the full suite of MATLAB add-on packages. Some of these packages may be required to run the software.
 
 ### Installation
-Download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/ccnmaastricht/CNI_toolbox/blob/master/code/matlab/computational%20neuroimaging%20toolbox.mltbx), navigate to the downloaded file within MATLAB and then execute the following command:
+Download the toolbox file [Computational Neuroimaging Toolbox.mltbx](https://github.com/ccnmaastricht/CNI_toolbox/raw/master/code/matlab/computational%20neuroimaging%20toolbox.mltbx), navigate to the downloaded file within MATLAB and then execute the following command:
 
 ```MATLAB
 matlab.addons.toolbox.installToolbox('Computational Neuroimaging Toolbox.mltbx');
