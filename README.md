@@ -32,6 +32,8 @@ matlab.addons.toolbox.installToolbox('computational neuroimaging toolbox.mltbx')
 ## Python implementation
 ![](https://img.shields.io/badge/release-v1.0.0-blueviolet.svg?style=flat)
 
+This software was developed for Python 3.
+
 ### Installation
 
 ```Python
