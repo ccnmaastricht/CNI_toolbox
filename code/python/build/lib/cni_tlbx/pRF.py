@@ -26,7 +26,7 @@ import tkinter as tk
 from tkinter import filedialog
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_tlbx.gadgets import two_gamma, gaussian
+from cni_toolbox.gadgets import two_gamma, gaussian
 
 
 class pRF:

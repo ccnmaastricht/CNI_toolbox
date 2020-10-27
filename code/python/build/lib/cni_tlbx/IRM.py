@@ -22,7 +22,7 @@ import sys
 import numpy as np
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_tlbx.gadgets import two_gamma
+from cni_toolbox.gadgets import two_gamma
 
 class IRM:
     '''

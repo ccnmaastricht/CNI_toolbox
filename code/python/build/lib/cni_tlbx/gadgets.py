@@ -272,7 +272,7 @@ class online_processor:
         '''
         updates the standard deviation of the tracked variable
         '''
-
+        
         self.M2 += (x - self.previous_mean) * (x - self.mean)
         if self.step==1:
             self.sigma = np.sqrt(self.M2 / self.step)

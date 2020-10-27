@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: cni-tlbx
+Version: 1.0.0
+Summary: computational neuroimaging toolbox
+Home-page: https://github.com/ccnmaastricht/CNI_toolbox
+Author: Mario Senden
+Author-email: mario.senden@maastrichtuniversity.nl
+License: UNKNOWN
+Description: ## Files
+        This repository contains four files.
+        1. `PEA.py`     - class implementation of Fourier analysis of phase-encoded stimuli.
+        4. `HGR.py`     - class implementation of linear RF model based on hashed Gaussians.
+        3. `pRF.py`     - class implementation of population receptive field mapping.
+        4. `IRM.py`     - class implementation of input-referred model estimation.
+        5. `gadgets.py` - collection of auxiliary tools (used by main tools).
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3
+Description-Content-Type: text/markdown

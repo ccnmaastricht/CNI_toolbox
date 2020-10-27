@@ -21,7 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import numpy as np
 from scipy.stats import zscore, f
-from cni_tlbx.gadgets import regress, correct_autocorr
+from cni_toolbox.gadgets import regress, correct_autocorr
 
 class PEA:
     '''
