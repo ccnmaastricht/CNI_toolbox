@@ -341,7 +341,7 @@ class pRF:
                 v = voxel_index[m]
 
                 CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
-                idx_remove = (CS == np.Inf) | (CS == np.NaN)
+                idx_remove = idx_remove = (np.isinf(CS))| (np.isnan(CS))
                 CS[idx_remove] = 0
 
                 results['corr_fit'][v] = np.max(CS)
