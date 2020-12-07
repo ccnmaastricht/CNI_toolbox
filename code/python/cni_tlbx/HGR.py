@@ -172,7 +172,7 @@ class HGR:
         - n_batch: float
             batch size                       (default = 10000)
         - max_radius: integer
-            radius of measured visual key    (default =    10)
+            radius of measured visual field  (default =    10)
         - alpha: float
             shrinkage parameter              (default =     1)
         - mask: boolean array
@@ -182,7 +182,9 @@ class HGR:
         print('\nestimating pRF parameters')
 
         if np.size(mask) == 0:
-            mask = np.ones(self.n_voxels).astype(bool)
+            mask = np.ones(self.n_voxels)
+
+        mask = mask.astype(bool)
         idx = np.arange(self.n_voxels)
         idx = idx[mask]
         n_mask = sum(mask)
