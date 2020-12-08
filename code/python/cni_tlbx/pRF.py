@@ -278,7 +278,7 @@ class pRF:
         sdev_tc = np.std(tc, axis = 0)
         idx_remove = np.where(sdev_tc == 0)
         tc = np.delete(tc, idx_remove, axis = 1)
-        self.idx = np.delete(self.idx, idx_remove, axis, axis = 0)
+        self.idx = np.delete(self.idx, idx_remove, axis = 0)
 
         sys.stdout.write('\r')
         sys.stdout.write("[%-20s] %d%%" % ('=' * 20, 100))
