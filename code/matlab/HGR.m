@@ -61,15 +61,15 @@ classdef HGR < handle
     % 3. hgr.get_parameters();
     
     properties (Access = private)
-
+        
         % functions
         gauss            % 2D Gaussian function
         two_gamma        % two gamma hresults function
         
         % class objects
-        data_processor 
+        data_processor
         phi_processor
-
+        
         % parameters
         p_sampling       % sampling rate
         r_stimulus       % stimulus width & height
@@ -80,25 +80,25 @@ classdef HGR < handle
         fwhm             % fwhm of each gaussian
         eta              % learning rate (gradient descend)
         lambda           % penalty parameter (ridge)
-
+        
         % variables
         theta            % feature weights
         gamma            % features (hashed Gaussians)
-
+        
         l_hrf            % length of hrf
         hrf              % hrf convolution kernel
-
+        
     end
     methods (Access = public)
-
+        
         function self = HGR(parameters, varargin)
-
+            
             % constructor
             p = inputParser;
             addRequired(p,'parameters',@isstruct);
             addOptional(p,'l_kernel',34);
             p.parse(parameters,varargin{:});
-
+            
             parameters = p.Results.parameters;
             self.l_hrf = p.Results.l_kernel;
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
@@ -120,7 +120,7 @@ classdef HGR < handle
             self.theta = zeros(self.n_features,self.n_voxels);
             self.hrf = self.two_gamma(0:self.p_sampling:...
                 self.l_hrf - 1)';
-
+            
             self.data_processor = online_processor(...
                 self.n_voxels,...
                 'sampling_rate', self.p_sampling,...
@@ -132,14 +132,14 @@ classdef HGR < handle
                 'l_kernel', self.l_hrf);
             
         end
-
+        
         function update(self,data,stimulus)
             % performs a single gradient descent update based on current
             % time point's data and stimulus. Online convolution and
-            % z-normalization is handled internally.  
+            % z-normalization is handled internally.
             %
             % required inputs are
-            %  - data    : a row vector of observed BOLD activation levels 
+            %  - data    : a row vector of observed BOLD activation levels
             %              per voxel.
             %  - stimulus: a row vector of pixel intensities.
             phi = stimulus * self.gamma;
@@ -149,7 +149,7 @@ classdef HGR < handle
             self.theta = self.theta + self.eta *...
                 (phi' * y - phi' * phi * self.theta);
         end
-
+        
         function ridge(self,data,stimulus)
             % performs ridge regression with stimulus encoded by hashed
             % Gaussians as predictors.
@@ -162,22 +162,22 @@ classdef HGR < handle
             phi = zscore(self.convolution(stimulus * self.gamma));
             self.theta = (phi' * phi + I) \ phi' * zscore(data);
         end
-
+        
         function gamma = get_features(self)
             % returns hashed Gaussians as a number of pixels by number of
             % features matrix.
             gamma = self.gamma;
         end
-
+        
         function theta = get_weights(self)
             % returns learned regression weights as a number of features by
             % number of voxels matrix.
             theta = self.theta;
         end
-
+        
         function results = get_parameters(self,varargin)
             % estimates population receptive field (2D Gaussian) parameters
-            % based on receptive fields given by linear combination of 
+            % based on receptive fields given by linear combination of
             % features and their weighted by their regression coefficients.
             %
             % returns a structure with the following fields
@@ -208,30 +208,30 @@ classdef HGR < handle
             n_batch = p.Results.n_batch;
             max_radius = p.Results.max_radius;
             alpha = p.Results.alpha;
-
-
+            
+            
             idx = (1:self.n_voxels)';
             idx = idx(msk);
             n_msk = sum(msk);
-
+            
             results.mu_x = nan(self.n_voxels,1);
             results.mu_y = nan(self.n_voxels,1);
             results.sigma = nan(self.n_voxels,1);
-
+            
             Y = linspace(max_radius, -max_radius, self.r_stimulus)' * ones(1,self.r_stimulus);
             X = ones(self.r_stimulus, 1) * linspace(-max_radius, max_radius, self.r_stimulus);
             X = X(:);
             Y = Y(:);
-
+            
             s = linspace(1e-3, max_radius, 25);
             r = linspace(0, sqrt(2 * max_radius^2),25);
             [S,R] = meshgrid(s,r);
             S = S(:);
             R = R(:);
-
-
+            
+            
             I = zeros(numel(S),1);
-
+            
             for i=1:numel(S)
                 x = cos(pi/4) * R(i);
                 y = sin(pi/4) * R(i);
@@ -239,7 +239,7 @@ classdef HGR < handle
             end
             P = [I, R];
             beta = (P' * P) \ P' * S;
-
+            
             for v=0:n_batch:n_msk-n_batch
                 progress(v / n_msk * 20)
                 batch = idx(v+1:v+n_batch);
@@ -253,14 +253,14 @@ classdef HGR < handle
                 cy = mod(pos-1, self.r_stimulus);
                 results.mu_x(batch) = cx / self.r_stimulus * max_radius * 2 - max_radius;
                 results.mu_y(batch) = -(cy / self.r_stimulus * max_radius * 2 - max_radius);
-
+                
                 results.sigma(batch) = [m_image, sqrt(results.mu_x(batch).^2 +...
                     results.mu_y(batch).^2)] * beta;
-                  
+                
             end
-           
+            
             if isempty(v)
-                batch = idx; 
+                batch = idx;
             else
                 batch = idx(v+1:end);
             end
@@ -279,16 +279,16 @@ classdef HGR < handle
                 results.mu_y(batch).^2)] * beta;
             results.polar_angle = angle(results.mu_x + results.mu_y * 1i);
             results.eccentricity = abs(results.mu_x + results.mu_y * 1i);
-
+            
         end
-
+        
         function tc = get_timecourses(self, stimulus)
             % returns the timecourses predicted based on an encoding of the
             % provided stimulus and the feature weights.
             phi = zscore(self.convolution(stimulus * self.gamma));
             tc = phi * self.theta;
         end
-
+        
         function set_parameters(self,parameters)
             % change parameters of the class
             %
@@ -306,17 +306,17 @@ classdef HGR < handle
             self.lambda = 1 / self.eta;
             self.create_gamma();
         end
-
+        
         function reset(self)
             % reset all internal states of the class
-            %             
+            %
             % use this function prior to conducting real time estimation
             % for a new set of data (new run)
             self.theta = zeros(self.n_features,self.n_voxels);
             self.phi_processor.reset();
             self.data_processor.reset();
         end
-
+        
         function [mask,corr_fit] = get_best_voxels(self,data,stimulus,varargin)
             % uses blocked cross-validation to obtain the best voxels
             % and returns a binary mask as well the correlation fit per voxel
@@ -331,7 +331,7 @@ classdef HGR < handle
             %              > 'percentile' (default)
             %              > 'threshold'
             %              > 'number'
-            %              
+            %
             %  - cutoff  : cutoff value          (default = 95)
             %  - n_splits: number of data splits (default = 4)
             
@@ -341,18 +341,18 @@ classdef HGR < handle
             addOptional(p,'type','percentile');
             addOptional(p,'cutoff', 95);
             addOptional(p,'n_splits', 4);
-
+            
             p.parse(data, stimulus, varargin{:});
             data = p.Results.data;
             stimulus = p.Results.stimulus;
             type = p.Results.type;
             cutoff = p.Results.cutoff;
             n_splits = p.Results.n_splits;
-
+            
             n_time = size(data, 1);
             n_steps = n_splits - 1;
             n_samples = floor(n_time / n_splits);
-
+            
             corr_fit = zeros(self.n_voxels, n_splits);
             for i = 1:n_steps
                 bound = i * n_samples;
@@ -360,7 +360,7 @@ classdef HGR < handle
                 train_stim = stimulus(1:bound,:);
                 test_data = zscore(data(bound+1:end,:));
                 test_stim = stimulus(bound+1:end,:);
-
+                
                 self.ridge(train_data,train_stim);
                 Y = self.get_timecourses(test_stim);
                 mag_Y = sqrt(sum(Y.^2));
@@ -368,7 +368,7 @@ classdef HGR < handle
                 corr_fit(:,i) = (sum(Y .* test_data) ./ (mag_Y .* mag_data))';
             end
             corr_fit = mean(corr_fit, 2);
-
+            
             if strcmp(type,'percentile')
                 threshold = prctile(corr_fit, cutoff);
                 mask = corr_fit>=threshold;
@@ -380,12 +380,12 @@ classdef HGR < handle
                 threshold = val(cutoff);
                 mask = corr_fit>=threshold;
             else
-               error('Wrong type. Choose either ''percentile'', ''number'' or ''threshold''')
+                error('Wrong type. Choose either ''percentile'', ''number'' or ''threshold''')
             end
         end
-
+        
     end
-
+    
     methods (Access = private)
         function create_gamma(self)
             Y = linspace(0,self.r_stimulus,self.r_stimulus)' * ones(1,self.r_stimulus);
@@ -400,7 +400,7 @@ classdef HGR < handle
             y = mod(pix_id,self.r_stimulus) + 1;
             for i=0:self.n_features-1
                 for j=1:self.n_gaussians
-
+                    
                     self.gamma(:,:,i+1) = self.gamma(:,:,i+1) +...
                         self.gauss(x(i*self.n_gaussians+j),...
                         y(i*self.n_gaussians+j),sigma,X,Y);
@@ -408,10 +408,10 @@ classdef HGR < handle
                 self.gamma(:,:,i+1) = self.gamma(:,:,i+1) /...
                     sum(sum(self.gamma(:,:,i+1)));
             end
-
+            
             self.gamma = (reshape(self.gamma,self.n_pixels,self.n_features));
         end
-
+        
         function x_conv = convolution(self, x)
             n_samples = size(x, 1);
             kernel = [self.hrf; zeros(n_samples, 1)];
@@ -419,7 +419,7 @@ classdef HGR < handle
             x_conv = ifft(fft(x) .* fft(kernel));
             x_conv = x_conv(1:n_samples, :);
         end
-
+        
     end
-
+    
 end

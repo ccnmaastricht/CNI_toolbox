@@ -30,7 +30,7 @@ classdef online_processor < handle
     % pixels etc.) to which processing is applied
     %
     % optional inputs are
-    %   - sampling_rate: sampling rate of fMRI acquisition (TR) in seconds (default =  2) 
+    %   - sampling_rate: sampling rate of fMRI acquisition (TR) in seconds (default =  2)
     %   - l_kernel: length of hemodynic convolution kernel in seconds      (default = 34)
     %
     % this class has the following functions

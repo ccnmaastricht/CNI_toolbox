@@ -168,11 +168,13 @@ classdef PEA < handle
                 self.n_samples,self.n_total);
             
             mean_signal = mean(data);
+            sdev_signal = std(data);
             
             if isempty(mask)
                 mask = mean_signal>=threshold;
             end
-            mask = mask(:);
+            mask = logical(mask(:));
+            mask = mask & (sdev_signal(:) > 0);
             voxel_index = find(mask);
             n_voxels = numel(voxel_index);
             
