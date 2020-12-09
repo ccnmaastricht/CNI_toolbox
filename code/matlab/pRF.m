@@ -299,6 +299,12 @@ classdef pRF < handle
             
             tc = (W * self.stimulus).^css_exponent;
             progress(20)
+            sdev_tc = std(tc,[],2);
+            idx_remove = sdev_tc==0;
+            num_remove = sum(idx_remove);
+            self.n_points = self.n_points - num_remove;
+            tc(idx_remove, :) = [];
+            self.idx(idx_remove, :) = [];
             self.tc_fft = fft(tc');
         end
         
@@ -338,12 +344,13 @@ classdef pRF < handle
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
-            
-            
+            sdev_signal = std(data);
+
             if isempty(mask)
                 mask = mean_signal>=threshold;
             end
-            mask = mask(:);
+            mask = logical(mask(:));
+            mask = mask & (sdev_signal(:) > 0);
             voxel_index = find(mask);
             n_voxels = numel(voxel_index);
             

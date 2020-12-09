@@ -8,4 +8,3 @@ if isnumeric(c)
 else
     fprintf(1,'%s\n%s',c, repmat(' ', 28,1))
 end
-

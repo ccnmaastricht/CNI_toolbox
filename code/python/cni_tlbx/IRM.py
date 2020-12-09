@@ -71,25 +71,25 @@ class IRM:
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
 
-        if hrf != None:
+        if hrf is not None:
             self.l_hrf = hrf.shape[0]
-            if hrf.ndim>1:
+            if hrf.ndim > 1:
                 hrf = np.reshape(hrf, (self.l_hrf, self.n_total))
                 self.hrf_fft = fft(np.vstack((hrf,
-                                      np.zeros((self.n_samples,
-                                                self.n_total)))),
+                                              np.zeros((self.n_samples,
+                                                        self.n_total)))),
                                    axis = 0)
             else:
                 self.hrf_fft = fft(np.append(hrf,
-                                     np.zeros(self.n_samples)),
-                                   axis = 0 )
+                                             np.zeros(self.n_samples)),
+                                   axis = 0)
         else:
             self.l_hrf = int(34 * self.f_sampling)
             timepoints = np.arange(0,
                                    self.p_sampling * (self.n_samples +
-                                                      self.l_hrf) - 1,
+                                                      self.l_hrf),
                                    self.p_sampling)
-            self.hrf_fft = fft(two_gamma(timepoints), axis = 0)
+            self.hrf_fft = fft(two_gamma(timepoints), axis=0)
 
 
     def get_hrf(self):
@@ -101,12 +101,12 @@ class IRM:
         '''
         if self.hrf_fft.ndim>1:
                 hrf = ifft(np.zqueeze(
-                    np.reshape(self.hrf,
+                    np.reshape(self.hrf[0:self.l_hrf, :],
                                  (self.l_hrf,
                                   self.n_rows,
                                   self.n_cols,
                                   self.n_slices))),
-                    axis = 0)[0:self.l_hrf, :]
+                    axis = 0)
         else:
             hrf = ifft(self.hrf_fft, axis = 0)[0:self.l_hrf]
 
@@ -203,6 +203,10 @@ class IRM:
             sys.stdout.write("[%-20s] %d%%"
                    % ('='*i, 5*i))
 
+        sdev_tc = np.std(tc, axis = 0)
+        idx_remove = np.where(sdev_tc == 0)
+        tc = np.delete(tc, idx_remove, axis = 1)
+        self.idx = np.delete(self.idx, idx_remove, axis = 0)
         self.tc_fft = fft(tc, axis = 0)
 
     def mapping(self, data, threshold = 100, mask = []):
@@ -230,16 +234,20 @@ class IRM:
                         self.n_total))
 
         mean_signal = np.mean(data, axis = 0)
-        data = zscore(data, axis = 0)
+        sdev_signal = np.std(data, axis = 0)
 
         if np.size(mask)==0:
-                mask = mean_signal >= threshold
+            mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)
+        mask = mask.astype(bool) & (sdev_signal > 0)
+
+        data = zscore(data[:, mask], axis = 0)
+
         voxel_index = np.where(mask)[0]
         n_voxels = voxel_index.size
 
-        mag_d = np.sqrt(np.sum(data[:, mask]**2, axis = 0))
+        mag_d = np.sqrt(np.sum(data**2, axis = 0))
 
         results = {'corr_fit': np.zeros(self.n_total)}
         for key in self.xdata:
@@ -258,7 +266,7 @@ class IRM:
             for m in range(n_voxels):
                 v = voxel_index[m]
 
-                CS = np.matmul(tc, data[:, v]) / (mag_tc * mag_d[m])
+                CS = np.matmul(tc, data[:, m]) / (mag_tc * mag_d[m])
                 idx_remove = (np.isinf(CS))| (np.isnan(CS))
                 CS[idx_remove] = 0
 

@@ -96,21 +96,21 @@ classdef IRM < handle
             self.two_gamma = @(t) (6*t.^5.*exp(-t))./gamma(6)...
                 -1/6*(16*t.^15.*exp(-t))/gamma(16);
             
-            self.f_sampling = p.corr_fitesults.parameters.f_sampling;
+            self.f_sampling = p.Results.parameters.f_sampling;
             self.p_sampling = 1/self.f_sampling;
-            self.n_samples = p.corr_fitesults.parameters.n_samples;
-            self.n_rows = p.corr_fitesults.parameters.n_rows;
-            self.n_cols = p.corr_fitesults.parameters.n_cols;
-            self.n_slices = p.corr_fitesults.parameters.n_slices;
+            self.n_samples = p.Results.parameters.n_samples;
+            self.n_rows = p.Results.parameters.n_rows;
+            self.n_cols = p.Results.parameters.n_cols;
+            self.n_slices = p.Results.parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
             
-            if ~isempty(p.corr_fitesults.hrf)
-                self.l_hrf = size(p.corr_fitesults.hrf,1);
-                if ndims(p.corr_fitesults.hrf)==4
-                    self.hrf = reshape(p.corr_fitesults.hrf,...
+            if ~isempty(p.Results.hrf)
+                self.l_hrf = size(p.Results.hrf,1);
+                if ndims(p.Results.hrf)==4
+                    self.hrf = reshape(p.Results.hrf,...
                         self.l_hrf,self.n_total);
                 else
-                    self.hrf = p.corr_fitesults.hrf;
+                    self.hrf = p.Results.hrf;
                 end
                 
             else
@@ -177,7 +177,7 @@ classdef IRM < handle
             %          Each cell element needs to contain a column vector
             %          of variable length with parameter values to be explored.
             
-            progress('performing phase encoding analysis')
+            progress('creating timecourses');
             
             self.xdata = xdata;
             self.n_predictors = numel(xdata);
@@ -204,6 +204,12 @@ classdef IRM < handle
                 
                 progress(j / self.n_points * 20);
             end
+            sdev_tc = std(tc);
+            idx_remove = sdev_tc==0;
+            num_remove = sum(idx_remove);
+            self.n_points = self.n_points - num_remove;
+            tc(:, idx_remove) = [];
+            self.idx(idx_remove, :) = [];
             self.tc_fft = fft(tc);
             
         end
@@ -233,19 +239,20 @@ classdef IRM < handle
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
-            data = single(p.corr_fitesults.data);
-            threshold = p.corr_fitesults.threshold;
-            mask = p.corr_fitesults.mask;
+            data = single(p.Results.data);
+            threshold = p.Results.threshold;
+            mask = p.Results.mask;
             
             data = reshape(data(1:self.n_samples,:,:,:),...
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
-            
+            sdev_signal = std(data);
             
             if isempty(mask)
                 mask = mean_signal>=threshold;
             end
-            mask = mask(:);
+            mask = logical(mask(:));
+            mask = mask & (sdev_signal(:) > 0);
             voxel_index = find(mask);
             n_voxels = numel(voxel_index);
             

@@ -104,12 +104,12 @@ class pRF:
         '''
         if self.hrf_fft.ndim > 1:
             hrf = ifft(np.zqueeze(
-                np.reshape(self.hrf,
+                np.reshape(self.hrf[0:self.l_hrf, :],
                            (self.l_hrf,
                             self.n_rows,
                             self.n_cols,
                             self.n_slices))),
-                       axis=0)[0:self.l_hrf, :]
+                       axis=0)
         else:
             hrf = ifft(self.hrf_fft, axis=0)[0:self.l_hrf]
 
@@ -275,6 +275,11 @@ class pRF:
                              % ('=' * i, 5 * i))
 
         tc = (np.matmul(W, self.stimulus).transpose())**css_exponent
+        sdev_tc = np.std(tc, axis = 0)
+        idx_remove = np.where(sdev_tc == 0)
+        tc = np.delete(tc, idx_remove, axis = 1)
+        self.idx = np.delete(self.idx, idx_remove, axis = 0)
+
         sys.stdout.write('\r')
         sys.stdout.write("[%-20s] %d%%" % ('=' * 20, 100))
         self.tc_fft = fft(tc, axis=0)
@@ -311,14 +316,19 @@ class pRF:
                           (self.n_samples,
                            self.n_total))
 
-        mean_signal = np.mean(data, axis=0)
+        mean_signal = np.mean(data, axis = 0)
+        sdev_signal = np.std(data, axis = 0)
+
 
         if np.size(mask) == 0:
             mask = mean_signal >= threshold
 
         mask = np.reshape(mask, self.n_total)
-        voxel_index = np.where(mask)[0]
+        mask = mask.astype(bool) & (sdev_signal > 0)
+
         data = zscore(data[:, mask], axis=0)
+
+        voxel_index = np.where(mask)[0]
         n_voxels = voxel_index.size
 
         mag_d = np.sqrt(np.sum(data**2, axis=0))

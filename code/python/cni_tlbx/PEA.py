@@ -121,13 +121,17 @@ class PEA:
                         self.n_total))
 
         mean_signal = np.mean(data, axis = 0)
+        sdev_signal = np.std(data, axis = 0)
 
         if np.size(mask)==0:
             mask = mean_signal >= threshold
 
         mask = np.reshape(mask,self.n_total)
-        voxel_index = np.where(mask)[0]
+        mask = mask.astype(bool) & (sdev_signal > 0)
+
         data = zscore(data[:, mask], axis = 0)
+
+        voxel_index = np.where(mask)[0]
         n_voxels = voxel_index.size
 
         beta = regress(data, X)
