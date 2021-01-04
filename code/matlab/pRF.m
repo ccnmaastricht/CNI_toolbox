@@ -79,6 +79,8 @@ classdef pRF < handle
         n_slices
         n_total
         l_hrf
+        h_stimulus
+        w_stimulus
         r_stimulus
         idx
         ecc
@@ -87,6 +89,24 @@ classdef pRF < handle
         hrf
         stimulus
         tc_fft
+    end
+    
+    methods (Access = private)
+        function padded_stimulus = zeropad(self, stimulus)
+            padded_stimulus = zeros(self.r_stimulus,...
+                self.r_stimulus, self.n_samples);
+            
+            width_half = floor((self.r_stimulus - self.w_stimulus) / 2);
+            width_lower = width_half + 1;
+            width_upper = width_half + self.w_stimulus;
+            
+            height_half = floor((self.r_stimulus - self.h_stimulus) / 2);
+            height_lower = height_half + 1;
+            height_upper = height_half + self.h_stimulus;
+            
+            padded_stimulus(height_lower:height_upper,...
+                width_lower:width_upper,:) = stimulus;
+        end
     end
     
     methods (Access = public)
@@ -110,7 +130,9 @@ classdef pRF < handle
             self.n_cols = p.Results.parameters.n_cols;
             self.n_slices = p.Results.parameters.n_slices;
             self.n_total = self.n_rows*self.n_cols*self.n_slices;
-            self.r_stimulus = p.Results.parameters.r_stimulus;
+            self.h_stimulus = p.Results.parameters.h_stimulus;
+            self.w_stimulus = p.Results.parameters.w_stimulus;
+            self.r_stimulus = max(self.w_stimulus, self.h_stimulus);
             
             if ~isempty(p.Results.hrf)
                 self.l_hrf = size(p.Results.hrf,1);
@@ -146,7 +168,8 @@ classdef pRF < handle
         function stimulus = get_stimulus(self)
             % returns the stimulus used by the class as a tensor
             % of rank 3 (height-by-width-by-time).
-            stimulus = reshape(self.stimulus,self.r_stimulus,...
+            stimulus = reshape(self.stimulus(:,1:self.n_samples),...
+                self.r_stimulus,...
                 self.r_stimulus,self.n_samples);
         end
         
@@ -177,13 +200,18 @@ classdef pRF < handle
             % and stored in matrix form.
             % Note that the provided stimulus tensor can be either rank 3
             % (height-by-width-by-time) or rank 2 (height*width-by-time).
-            if ndims(stimulus)==3
-                self.stimulus = reshape(stimulus,...
-                    self.r_stimulus^2,...
+            
+            if ndims(stimulus)<3
+                stimulus = reshape(stimulus,...
+                    self.h_stimulus,...
+                    self.w_stimulus,...
                     self.n_samples);
-            else
-                self.stimulus = stimulus;
             end
+            stimulus = self.zeropad(stimulus);
+            self.stimulus = reshape(stimulus,...
+                self.r_stimulus^2,...
+                self.n_samples);
+            
             self.stimulus = [self.stimulus,...
                 zeros(self.r_stimulus^2, self.l_hrf)];
         end
@@ -200,9 +228,9 @@ classdef pRF < handle
             files = dir([path,'*.png']);
             
             im = imread([path,files(1).name]);
-            self.stimulus = zeros(self.r_stimulus,self.r_stimulus,...
+            stim = zeros(self.h_stimulus,self.w_stimulus,...
                 self.n_samples);
-            self.stimulus(:,:,1) = im(:,:,1);
+            stim(:,:,1) = im(:,:,1);
             l = regexp(files(1).name,'\d')-1;
             prefix = files(1).name(1:l);
             name = {files.name};
@@ -212,12 +240,13 @@ classdef pRF < handle
             
             for t=2:self.n_samples
                 im = imread([path,files(index(t)).name]);
-                self.stimulus(:,:,t) = im(:,:,1);
+                stim(:,:,t) = im(:,:,1);
             end
-            mn = min(self.stimulus(:));
-            range = max(self.stimulus(:))-mn;
-            
-            self.stimulus = (reshape(self.stimulus,...
+            mn = min(stim(:));
+            range = max(stim(:))-mn;
+            stim = (stim - mn) / range;
+            stim = self.zeropad(stim);
+            self.stimulus = (reshape(stim,...
                 self.r_stimulus^2,...
                 self.n_samples)-mn)/range;
             
@@ -287,7 +316,7 @@ classdef pRF < handle
             
             W = single(zeros(self.n_points,...
                 self.r_stimulus^2));
-
+            
             
             for j=1:self.n_points
                 x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
@@ -345,7 +374,7 @@ classdef pRF < handle
                 self.n_samples,self.n_total);
             mean_signal = mean(data);
             sdev_signal = std(data);
-
+            
             if isempty(mask)
                 mask = mean_signal>=threshold;
             end
