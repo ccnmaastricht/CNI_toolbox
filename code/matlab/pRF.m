@@ -33,7 +33,8 @@ classdef pRF < handle
     %   - n_rows    : number of rows (in-plane resolution)
     %   - n_cols    : number of columns (in-plance resolution)
     %   - n_slices  : number of slices
-    %   - r_stimulus: width & height of stimulus images in pixels
+    %   - h_stimulus: height of stimulus images in pixels
+    %   - w_stimulus: width of stimulus images in pixels
     %
     % optional inputs are
     %   - hrf       : either a column vector containing a single hemodynamic
