@@ -90,6 +90,32 @@ def size(x,length):
 
     return out.astype(int)
 
+def stimpad(stimulus):
+    '''
+    Parameters
+    ----------
+    stimulus: floating point array (height by width by samples)
+
+    Returns
+    -------
+    padded_stimulus: floating point array (height by width by samples)
+        zero padded stimulus
+    '''
+
+    height, width, samples = stimulus.shape
+    res = np.maximum(width,height)
+
+    padded_stimulus = np.zeros((res,res,samples))
+
+    height_lower = int((res - height) / 2)
+    height_upper = height_lower + height
+    width_lower = int((res - width) / 2)
+    width_upper = width_lower + width
+    padded_stimulus[height_lower:height_upper,
+        width_lower:width_upper,:] = stimulus
+
+    return padded_stimulus
+
 def regress(Y, X, l = 0.):
     '''
     Parameters

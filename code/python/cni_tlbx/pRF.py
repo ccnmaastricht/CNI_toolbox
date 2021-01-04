@@ -26,7 +26,7 @@ import tkinter as tk
 from tkinter import filedialog
 from scipy.stats import zscore
 from scipy.fft import fft, ifft
-from cni_tlbx.gadgets import two_gamma, gaussian
+from cni_tlbx.gadgets import two_gamma, gaussian, stimpad
 
 
 class pRF:
@@ -40,7 +40,8 @@ class pRF:
       - n_rows    : number of rows (in-plane resolution)
       - n_cols    : number of columns (in-plance resolution)
       - n_slices  : number of slices
-      - r_stimulus: resolution (=width=height) of stimulus in pixels
+      - h_stimulus: height of stimulus in pixels
+      - w_stimulus: width of stimulus in pixels
 
     Optional inputs are
       - hrf       : either a vector containing a single hemodynamic response used for every voxel;
@@ -73,7 +74,9 @@ class pRF:
         self.n_cols = parameters['n_cols']
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
-        self.r_stimulus = parameters['r_stimulus']
+        self.h_stimulus = parameters['h_stimulus']
+        self.w_stimulus = parameters['w_stimulus']
+        self.r_stimulus = np.maximum(self.h_stimulus, self.w_stimulus)
 
         if hrf is not None:
             self.l_hrf = hrf.shape[0]
@@ -165,11 +168,13 @@ class pRF:
         ----------
         stimulus : floating point array
         '''
-        if stimulus.ndim == 3:
-            self.stimulus = np.reshape(
-                stimulus, (self.r_stimulus**2, self.n_samples))
-        else:
-            self.stimulus = stimulus
+        if stimulus.ndim < 3:
+            stimulus = np.reshape(stimulus,
+                (self.h_stimulus, self.w_stimulus, self.n_samples))
+
+        stimulus = stimpad(stimulus)
+        self.stimulus = np.reshape(
+            stimulus, (self.r_stimulus**2, self.n_samples))
         self.stimulus = np.hstack((self.stimulus,
                                    np.zeros((self.r_stimulus**2, self.l_hrf))))
 
@@ -181,20 +186,21 @@ class pRF:
 
         files = glob.glob('%s/*.png' % stimulus_directory)
 
-        self.stimulus = np.zeros((self.r_stimulus,
-                                  self.r_stimulus,
+        stimulus = np.zeros((self.h_stimulus,
+                                  self.w_stimulus,
                                   self.n_samples))
 
         for f in files:
             number = int(''.join([str(s) for s in f if s.isdigit()]))
             img = cv2.imread(f)
-            self.stimulus[:, :, number] = img[:, :, 0]
+            stimulus[:, :, number] = img[:, :, 0]
 
-        mn = np.min(self.stimulus)
-        mx = np.max(self.stimulus)
-        self.stimulus = (self.stimulus - mn) / (mx - mn)
+        mn = np.min(stimulus)
+        mx = np.max(stimulus)
+        stimulus = (stimulus - mn) / (mx - mn)
+        stimulus = stimpad(stimulus)
 
-        self.stimulus = np.reshape(self.stimulus,
+        self.stimulus = np.reshape(stimulus,
                                    (self.r_stimulus**2,
                                     self.n_samples))
 
