@@ -1,5 +1,6 @@
 # Computational Neuroimaging Toolbox
 
+[![DOI](https://zenodo.org/badge/132882227.svg)](https://zenodo.org/badge/latestdoi/132882227)
 ![](https://img.shields.io/github/license/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/issues/ccnmaastricht/CNI_toolbox)
 ![](https://img.shields.io/github/forks/ccnmaastricht/CNI_toolbox)
