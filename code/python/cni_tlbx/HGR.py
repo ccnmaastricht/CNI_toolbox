@@ -198,17 +198,22 @@ class HGR:
         x_coordinates = x_coordinates.flatten()
         y_coordinates = -y_coordinates.flatten()
 
-        s = np.linspace(1e-3, max_radius, 25)
-        r = np.linspace(0, np.sqrt(2 * max_radius**2), 25)
+        s = np.linspace(1e-1, 1.5 * max_radius, 50)
+        r = np.linspace(0, np.sqrt(2 * max_radius**2), 50)
         [S, R] = np.meshgrid(s,r)
         S = S.flatten()
         R = R.flatten()
-        I = np.zeros(625)
+        I = np.zeros(2500)
 
-        for i in range(625):
+        for i in range(2500):
             x = np.cos(np.pi / 4) * R[i]
             y = np.sin(np.pi / 4) * R[i]
-            I[i] = np.mean(gaussian(x, y, S[i], x_coordinates, y_coordinates))
+            W = gaussian(x, y, S[i], x_coordinates, y_coordinates)
+            mx = np.max(W)
+            mn = np.min(W)
+            val_range = mx - mn
+            W = (W - mn) / val_range
+            I[i] = np.mean(W)
 
         P = np.hstack((I.reshape(-1,1), R.reshape(-1,1)))
         beta = regress(S, P)
