@@ -223,8 +223,8 @@ classdef HGR < handle
             X = X(:);
             Y = Y(:);
             
-            s = linspace(1e-3, max_radius, 25);
-            r = linspace(0, sqrt(2 * max_radius^2),25);
+            s = linspace(1e-1,1.5 * max_radius, 50);
+            r = linspace(0, sqrt(2 * max_radius^2), 50);
             [S,R] = meshgrid(s,r);
             S = S(:);
             R = R(:);
@@ -235,7 +235,11 @@ classdef HGR < handle
             for i=1:numel(S)
                 x = cos(pi/4) * R(i);
                 y = sin(pi/4) * R(i);
-                I(i) = mean(self.gauss(x, y, S(i), X, Y));
+                W = self.gauss(x, y, S(i), X, Y);
+                mx = max(W);
+                mn = min(W);
+                W = (W - mn) / (mx - mn);
+                I(i) = mean(W);
             end
             P = [I, R];
             beta = (P' * P) \ P' * S;
