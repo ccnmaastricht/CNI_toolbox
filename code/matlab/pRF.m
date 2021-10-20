@@ -83,10 +83,12 @@ classdef pRF < handle
         h_stimulus
         w_stimulus
         r_stimulus
+        use_slope
         idx
         ecc
         pa
         slope
+        sigma
         hrf
         stimulus
         tc_fft
@@ -108,7 +110,303 @@ classdef pRF < handle
             padded_stimulus(height_lower:height_upper,...
                 width_lower:width_upper,:) = stimulus;
         end
+        
+        function create_timecourses_slope(self, p)
+            % creates predicted timecourses based on the effective stimulus
+            % and a range of isotropic receptive fields.
+            % Isotropic receptive fields are generated for a grid of
+            % location (x,y) and slope parameters.
+        
+            progress('creating timecourses');
+            
+            num_xy = p.Results.num_xy;
+            max_radius = p.Results.max_radius;
+            num_slope = p.Results.num_size;
+            min_slope = p.Results.min_slope;
+            max_slope = p.Results.max_slope;
+            css_exponent = p.Results.css_exponent;
+            sampling = p.Results.sampling;
+            self.n_points = num_xy^2 * num_slope;
+            
+            X_ = ones(self.r_stimulus,1) * linspace(-max_radius,...
+                max_radius,self.r_stimulus);
+            Y_ = -linspace(-max_radius,max_radius,...
+                self.r_stimulus)' * ones(1,self.r_stimulus);
+            
+            X_ = X_(:);
+            Y_ = Y_(:);
+            
+            i = (0:self.n_points-1)';
+            self.idx = [floor(i/(num_xy*num_slope))+1,...
+                mod(floor(i/(num_slope)),num_xy)+1,...
+                mod(i,num_slope)+1];
+            
+            if strcmp(sampling,'log')
+                self.ecc = exp(linspace(log(.1),log(max_radius),num_xy));
+            elseif strcmp(sampling,'linear')
+                self.ecc = linspace(.1,max_radius,num_xy);
+            end
+            
+            self.pa = linspace(0,(num_xy-1)/num_xy*2*pi,num_xy);
+            self.slope = linspace(min_slope,max_slope,num_slope);
+            
+            W = single(zeros(self.n_points,...
+                self.r_stimulus^2));
+            
+            
+            for j=1:self.n_points
+                x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                y = sin(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                sigm = self.ecc(self.idx(j,2)) * self.slope(self.idx(j,3));
+                W(j,:) = self.gauss(x,y,sigm,X_,Y_)';
+                progress(j / self.n_points * 19)
+            end
+            
+            tc = (W * self.stimulus).^css_exponent;
+            progress(20)
+            sdev_tc = std(tc,[],2);
+            idx_remove = sdev_tc==0;
+            num_remove = sum(idx_remove);
+            self.n_points = self.n_points - num_remove;
+            tc(idx_remove, :) = [];
+            self.idx(idx_remove, :) = [];
+            self.tc_fft = fft(tc');
+        end
+        
+        function create_timecourses_sigma(self,p)
+            % creates predicted timecourses based on the effective stimulus
+            % and a range of isotropic receptive fields.
+            % Isotropic receptive fields are generated for a grid of
+            % location (x,y) and size parameters.
+            %
+            
+            progress('creating timecourses');
+          
+            num_xy = p.Results.num_xy;
+            max_radius = p.Results.max_radius;
+            num_sigma = p.Results.num_size;
+            min_sigma = p.Results.min_sigma;
+            max_sigma = p.Results.max_sigma;
+            css_exponent = p.Results.css_exponent;
+            sampling = p.Results.sampling;
+            self.n_points = num_xy^2 * num_sigma;
+            
+            X_ = ones(self.r_stimulus,1) * linspace(-max_radius,...
+                max_radius,self.r_stimulus);
+            Y_ = -linspace(-max_radius,max_radius,...
+                self.r_stimulus)' * ones(1,self.r_stimulus);
+            
+            X_ = X_(:);
+            Y_ = Y_(:);
+            
+            i = (0:self.n_points-1)';
+            self.idx = [floor(i/(num_xy*num_sigma))+1,...
+                mod(floor(i/(num_sigma)),num_xy)+1,...
+                mod(i,num_sigma)+1];
+            
+            if strcmp(sampling,'log')
+                self.ecc = exp(linspace(log(.1),log(max_radius),num_xy));
+            elseif strcmp(sampling,'linear')
+                self.ecc = linspace(.1,max_radius,num_xy);
+            end
+            
+            self.pa = linspace(0,(num_xy-1)/num_xy*2*pi,num_xy);
+            self.sigma = linspace(min_sigma, max_sigma * max_radius, num_sigma);
+            
+            W = single(zeros(self.n_points,...
+                self.r_stimulus^2));
+            
+            
+            for j=1:self.n_points
+                x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                y = sin(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
+                W(j,:) = self.gauss(x,y,self.sigma(self.idx(j,3)),X_,Y_)';
+                progress(j / self.n_points * 19)
+            end
+            
+            tc = (W * self.stimulus).^css_exponent;
+            progress(20)
+            sdev_tc = std(tc,[],2);
+            idx_remove = sdev_tc==0;
+            num_remove = sum(idx_remove);
+            self.n_points = self.n_points - num_remove;
+            tc(idx_remove, :) = [];
+            self.idx(idx_remove, :) = [];
+            self.tc_fft = fft(tc');
+        end
+        
+        function results = mapping_slope(self, p)
+            
+            progress('mapping population receptive fields')
+            
+            data = single(p.Results.data);
+            threshold = p.Results.threshold;
+            mask = p.Results.mask;
+            
+            data = reshape(data(1:self.n_samples,:,:,:),...
+                self.n_samples,self.n_total);
+            mean_signal = mean(data);
+            sdev_signal = std(data);
+            
+            if isempty(mask)
+                mask = mean_signal>=threshold;
+            end
+            mask = logical(mask(:));
+            mask = mask & (sdev_signal(:) > 0);
+            voxel_index = find(mask);
+            n_voxels = numel(voxel_index);
+            
+            data = zscore(data(:,mask));
+            mag_d = sqrt(sum(data.^2));
+            
+            results.corr_fit = zeros(self.n_total,1);
+            results.mu_x = zeros(self.n_total,1);
+            results.mu_y = zeros(self.n_total,1);
+            results.sigma = zeros(self.n_total,1);
+            
+            if size(self.hrf,2)==1
+                hrf_fft = fft(repmat([self.hrf;...
+                    zeros(self.n_samples,1)],...
+                    [1,self.n_points]));
+                tc = ifft(self.tc_fft.*hrf_fft);
+                tc = zscore(tc(1:self.n_samples, :))';
+                mag_tc = sqrt(sum(tc.^2,2));
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    CS = (tc*data(:,m))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        self.slope(self.idx(j,3));
+                    
+                    progress(m / n_voxels * 20)
+                end
+            else
+                hrf_fft_all = fft([self.hrf(:,mask);...
+                    zeros(self.n_samples,n_voxels)]);
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
+                    tc = zscore(tc(1:self.n_samples, :))';
+                    mag_tc = sqrt(sum(tc.^2,2));
+                    
+                    CS = (tc*data(:,m))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
+                        self.slope(self.idx(j,3));
+                    
+                    progress(m / n_voxels * 20)
+                end
+            end
+            results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_x = reshape(results.mu_x,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_y = reshape(results.mu_y,self.n_rows,self.n_cols,self.n_slices);
+            results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
+            results.eccentricity = abs(results.mu_x+results.mu_y*1i);
+            results.polar_angle = angle(results.mu_x+results.mu_y*1i);
+        end
+        
+        function results = mapping_sigma(self, p)
+            
+            progress('mapping population receptive fields')
+            
+            data = single(p.Results.data);
+            threshold = p.Results.threshold;
+            mask = p.Results.mask;
+            
+            data = reshape(data(1:self.n_samples,:,:,:),...
+                self.n_samples,self.n_total);
+            mean_signal = mean(data);
+            sdev_signal = std(data);
+            
+            if isempty(mask)
+                mask = mean_signal>=threshold;
+            end
+            mask = logical(mask(:));
+            mask = mask & (sdev_signal(:) > 0);
+            voxel_index = find(mask);
+            n_voxels = numel(voxel_index);
+            
+            data = zscore(data(:,mask));
+            mag_d = sqrt(sum(data.^2));
+            
+            results.corr_fit = zeros(self.n_total,1);
+            results.mu_x = zeros(self.n_total,1);
+            results.mu_y = zeros(self.n_total,1);
+            results.sigma = zeros(self.n_total,1);
+            
+            if size(self.hrf,2)==1
+                hrf_fft = fft(repmat([self.hrf;...
+                    zeros(self.n_samples,1)],...
+                    [1,self.n_points]));
+                tc = ifft(self.tc_fft.*hrf_fft);
+                tc = zscore(tc(1:self.n_samples, :))';
+                mag_tc = sqrt(sum(tc.^2,2));
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    CS = (tc*data(:,m))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.sigma(self.idx(j,3));
+                    
+                    progress(m / n_voxels * 20)
+                end
+            else
+                hrf_fft_all = fft([self.hrf(:,mask);...
+                    zeros(self.n_samples,n_voxels)]);
+                for m=1:n_voxels
+                    v = voxel_index(m);
+                    
+                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
+                    tc = zscore(tc(1:self.n_samples, :))';
+                    mag_tc = sqrt(sum(tc.^2,2));
+                    
+                    CS = (tc*data(:,m))./...
+                        (mag_tc*mag_d(m));
+                    id = isinf(CS) | isnan(CS);
+                    CS(id) = 0;
+                    [results.corr_fit(v),j] = max(CS);
+                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
+                        self.ecc(self.idx(j,2));
+                    results.sigma(v) = self.sigma(self.idx(j,3));
+                    
+                    progress(m / n_voxels * 20)
+                end
+            end
+            results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_x = reshape(results.mu_x,self.n_rows,self.n_cols,self.n_slices);
+            results.mu_y = reshape(results.mu_y,self.n_rows,self.n_cols,self.n_slices);
+            results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
+            results.eccentricity = abs(results.mu_x+results.mu_y*1i);
+            results.polar_angle = angle(results.mu_x+results.mu_y*1i);
+        end
+        
     end
+    
     
     methods (Access = public)
         
@@ -259,14 +557,18 @@ classdef pRF < handle
             % creates predicted timecourses based on the effective stimulus
             % and a range of isotropic receptive fields.
             % Isotropic receptive fields are generated for a grid of
-            % location (x,y) and size parameters.
+            % location (x,y) and either size parameters directly or slopes
+            % of the eccentricity-size relationship.
             %
             % optional inputs are
+            %  - use_slope   : explore slopes rather than sizes(default =  True)
             %  - num_xy      : steps in x and y direction      (default =  30.0)
             %  - max_radius  : radius of the field of fiew     (default =  10.0)
-            %  - num_slope   : steps from lower to upper bound (default =  10.0)
+            %  - num_size    : steps from lower to upper bound (default =  10.0)
             %  - min_slope   : lower bound of RF size slope    (default =   0.1)
             %  - max_slope   : upper bound of RF size slope    (default =   1.2)
+            %  - min_sigma   : lower bound of RF size          (default =   0.1)
+            %  - max_sigma   : upper bound of RF size          (default =   1.0)
             %  - css_exponent: compressive spatial summation   (default =   1.0)
             %  - sampling    : eccentricity sampling type
             %                  > 'log' (default)
@@ -275,67 +577,25 @@ classdef pRF < handle
             progress('creating timecourses');
             
             p = inputParser;
-            addOptional(p,'num_xy',30);
+            addOptional(p,'use_slope', true);
+            addOptional(p,'num_xy',30); 
             addOptional(p,'max_radius',10);
-            addOptional(p,'num_slope',10);
+            addOptional(p,'num_size',10);
             addOptional(p,'min_slope',0.1);
             addOptional(p,'max_slope',1.2);
+            addOptional(p,'min_sigma',0.1);
+            addOptional(p,'max_sigma',1);
             addOptional(p,'css_exponent',1);
             addOptional(p,'sampling','log');
             p.parse(varargin{:});
+            self.use_slope = p.Results.use_slope;
             
-            num_xy = p.Results.num_xy;
-            max_radius = p.Results.max_radius;
-            num_slope = p.Results.num_slope;
-            min_slope = p.Results.min_slope;
-            max_slope = p.Results.max_slope;
-            css_exponent = p.Results.css_exponent;
-            sampling = p.Results.sampling;
-            self.n_points = num_xy^2 * num_slope;
-            
-            X_ = ones(self.r_stimulus,1) * linspace(-max_radius,...
-                max_radius,self.r_stimulus);
-            Y_ = -linspace(-max_radius,max_radius,...
-                self.r_stimulus)' * ones(1,self.r_stimulus);
-            
-            X_ = X_(:);
-            Y_ = Y_(:);
-            
-            i = (0:self.n_points-1)';
-            self.idx = [floor(i/(num_xy*num_slope))+1,...
-                mod(floor(i/(num_slope)),num_xy)+1,...
-                mod(i,num_slope)+1];
-            
-            if strcmp(sampling,'log')
-                self.ecc = exp(linspace(log(.1),log(max_radius),num_xy));
-            elseif strcmp(sampling,'linear')
-                self.ecc = linspace(.1,max_radius,num_xy);
+            if self.use_slope
+                self.create_timecourses_slope(p);
+            else
+                self.create_timecourses_sigma(p);
             end
             
-            self.pa = linspace(0,(num_xy-1)/num_xy*2*pi,num_xy);
-            self.slope = linspace(min_slope,max_slope,num_slope);
-            
-            W = single(zeros(self.n_points,...
-                self.r_stimulus^2));
-            
-            
-            for j=1:self.n_points
-                x = cos(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
-                y = sin(self.pa(self.idx(j,1))) * self.ecc(self.idx(j,2));
-                sigma = self.ecc(self.idx(j,2)) * self.slope(self.idx(j,3));
-                W(j,:) = self.gauss(x,y,sigma,X_,Y_)';
-                progress(j / self.n_points * 19)
-            end
-            
-            tc = (W * self.stimulus).^css_exponent;
-            progress(20)
-            sdev_tc = std(tc,[],2);
-            idx_remove = sdev_tc==0;
-            num_remove = sum(idx_remove);
-            self.n_points = self.n_points - num_remove;
-            tc(idx_remove, :) = [];
-            self.idx(idx_remove, :) = [];
-            self.tc_fft = fft(tc');
         end
         
         function results = mapping(self,data,varargin)
@@ -367,86 +627,12 @@ classdef pRF < handle
             addOptional(p,'mask',[]);
             p.parse(data,varargin{:});
             
-            data = single(p.Results.data);
-            threshold = p.Results.threshold;
-            mask = p.Results.mask;
-            
-            data = reshape(data(1:self.n_samples,:,:,:),...
-                self.n_samples,self.n_total);
-            mean_signal = mean(data);
-            sdev_signal = std(data);
-            
-            if isempty(mask)
-                mask = mean_signal>=threshold;
-            end
-            mask = logical(mask(:));
-            mask = mask & (sdev_signal(:) > 0);
-            voxel_index = find(mask);
-            n_voxels = numel(voxel_index);
-            
-            data = zscore(data(:,mask));
-            mag_d = sqrt(sum(data.^2));
-            
-            results.corr_fit = zeros(self.n_total,1);
-            results.mu_x = zeros(self.n_total,1);
-            results.mu_y = zeros(self.n_total,1);
-            results.sigma = zeros(self.n_total,1);
-            
-            if size(self.hrf,2)==1
-                hrf_fft = fft(repmat([self.hrf;...
-                    zeros(self.n_samples,1)],...
-                    [1,self.n_points]));
-                tc = ifft(self.tc_fft.*hrf_fft);
-                tc = zscore(tc(1:self.n_samples, :))';
-                mag_tc = sqrt(sum(tc.^2,2));
-                for m=1:n_voxels
-                    v = voxel_index(m);
-                    
-                    CS = (tc*data(:,m))./...
-                        (mag_tc*mag_d(m));
-                    id = isinf(CS) | isnan(CS);
-                    CS(id) = 0;
-                    [results.corr_fit(v),j] = max(CS);
-                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
-                        self.ecc(self.idx(j,2));
-                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
-                        self.ecc(self.idx(j,2));
-                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
-                        self.slope(self.idx(j,3));
-                    
-                    progress(m / n_voxels * 20)
-                end
+            if self.use_slope
+                results = self.mapping_slope(p);
             else
-                hrf_fft_all = fft([self.hrf(:,mask);...
-                    zeros(self.n_samples,n_voxels)]);
-                for m=1:n_voxels
-                    v = voxel_index(m);
-                    
-                    tc = ifft(self.tc_fft.*hrf_fft_all(:,m));
-                    tc = zscore(tc(1:self.n_samples, :))';
-                    mag_tc = sqrt(sum(tc.^2,2));
-                    
-                    CS = (tc*data(:,m))./...
-                        (mag_tc*mag_d(m));
-                    id = isinf(CS) | isnan(CS);
-                    CS(id) = 0;
-                    [results.corr_fit(v),j] = max(CS);
-                    results.mu_x(v) = cos(self.pa(self.idx(j,1))) * ...
-                        self.ecc(self.idx(j,2));
-                    results.mu_y(v) = sin(self.pa(self.idx(j,1))) * ...
-                        self.ecc(self.idx(j,2));
-                    results.sigma(v) = self.ecc(self.idx(j,2)) * ...
-                        self.slope(self.idx(j,3));
-                    
-                    progress(m / n_voxels * 20)
-                end
+                results = self.mapping_sigma(p);
             end
-            results.corr_fit = reshape(results.corr_fit,self.n_rows,self.n_cols,self.n_slices);
-            results.mu_x = reshape(results.mu_x,self.n_rows,self.n_cols,self.n_slices);
-            results.mu_y = reshape(results.mu_y,self.n_rows,self.n_cols,self.n_slices);
-            results.sigma = reshape(results.sigma,self.n_rows,self.n_cols,self.n_slices);
-            results.eccentricity = abs(results.mu_x+results.mu_y*1i);
-            results.polar_angle = angle(results.mu_x+results.mu_y*1i);
+            
         end
     end
 end
