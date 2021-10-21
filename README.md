@@ -12,7 +12,7 @@ This code is hosted at https://github.com/ccnmaastricht/CNI_toolbox
 The latest version may always be found here.
 
 ## Matlab implementation
-![](https://img.shields.io/badge/release-v2.1.1-blueviolet.svg?style=flat)
+![](https://img.shields.io/badge/release-v2.2.0-blueviolet.svg?style=flat)
 
 This software was developed with MATLAB R2017a and access to the full suite of MATLAB add-on packages. Some of these packages may be required to run the software.
 
@@ -31,7 +31,7 @@ matlab.addons.toolbox.installToolbox('computational neuroimaging toolbox.mltbx')
 * [Fast & real-time pRF mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Fast-&-real-time-pRF-mapping-(Matlab))
 
 ## Python implementation
-![](https://img.shields.io/badge/release-v1.1.1-blueviolet.svg?style=flat)
+![](https://img.shields.io/badge/release-v1.2.0-blueviolet.svg?style=flat)
 
 This software was developed for Python 3.
 
