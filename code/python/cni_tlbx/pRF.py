@@ -116,7 +116,7 @@ class pRF:
         else:
             hrf = ifft(self.hrf_fft, axis=0)[0:self.l_hrf]
 
-        return np.abs(hrf)
+        return np.real(hrf)
 
     def get_stimulus(self):
         '''
@@ -141,7 +141,7 @@ class pRF:
             predicted timecourses
         '''
 
-        return np.abs(ifft(self.tc_fft, axis=0)[0:self.n_samples, :])
+        return np.real(ifft(self.tc_fft, axis=0)[0:self.n_samples, :])
 
     def set_hrf(self, hrf):
         '''
@@ -287,7 +287,7 @@ class pRF:
             predicted timecourses
         '''
 
-        return np.abs(ifft(self.tc_fft, axis=0)[0:self.n_samples, :])
+        return np.real(ifft(self.tc_fft, axis=0)[0:self.n_samples, :])
 
     def set_hrf(self, hrf):
         '''
@@ -511,7 +511,7 @@ class pRF:
      if self.hrf_fft.ndim == 1:
          tc = np.transpose(
              zscore(
-                 np.abs(
+                 np.real(
                      ifft(self.tc_fft *
                           np.expand_dims(self.hrf_fft,
                                          axis=1), axis=0)), axis=0))
@@ -545,7 +545,7 @@ class pRF:
 
              tc = np.transpose(
                  zscore(
-                     np.abs(
+                     np.real(
                          ifft(self.tc_fft *
                               np.expand_dims(self.hrf_fft[:, v],
                                              axis=1), axis=0)), axis=0))
@@ -620,7 +620,7 @@ class pRF:
      if self.hrf_fft.ndim == 1:
          tc = np.transpose(
              zscore(
-                 np.abs(
+                 np.real(
                      ifft(self.tc_fft *
                           np.expand_dims(self.hrf_fft,
                                          axis=1), axis=0)), axis=0))
@@ -653,7 +653,7 @@ class pRF:
 
              tc = np.transpose(
                  zscore(
-                     np.abs(
+                     np.real(
                          ifft(self.tc_fft *
                               np.expand_dims(self.hrf_fft[:, v],
                                              axis=1), axis=0)), axis=0))

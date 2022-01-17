@@ -435,7 +435,7 @@ class HGR:
         kernel = np.append(self.hrf, np.zeros(n_samples))
         x = np.vstack((x, np.zeros((np.ceil(self.l_hrf / self.p_sampling).astype(int),
                                     self.n_features))))
-        x_conv = np.abs(
+        x_conv = np.real(
                     ifft(fft(x, axis=0) *
                          np.expand_dims(fft(kernel),
                                         axis=1), axis=0))

@@ -66,10 +66,11 @@ def two_gamma(timepoints):
         hemodynamic response function
     '''
 
-    hrf = (6 * timepoints**5 * np.exp(-timepoints)) / gamma(6) \
-                - 1 / 6 * (16 * timepoints ** 15 * np.exp(-timepoints)) \
+    hrf = (6 * (timepoints**5) * np.exp(-timepoints)) / gamma(6) \
+                - 1 / 6 * (16 * (timepoints ** 15) * np.exp(-timepoints)) \
                     / gamma(16)
     return hrf
+
 
 def size(x,length):
     '''
@@ -246,7 +247,7 @@ class online_processor:
 
         x_fft = fft(np.vstack((x.reshape(1,-1), np.zeros((self.l_subsampled - 1, self.n_channels)))), axis=0)
         self.x_conv = np.vstack((self.x_conv, np.zeros((1, self.n_channels))))
-        self.x_conv[self.step:self.step + self.l_subsampled, :] += np.abs(ifft(
+        self.x_conv[self.step:self.step + self.l_subsampled, :] += np.real(ifft(
             x_fft * np.expand_dims(self.hrf_fft , axis=1), axis=0))
 
         return self.x_conv[self.step, :]
