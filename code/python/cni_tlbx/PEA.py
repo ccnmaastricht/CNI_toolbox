@@ -57,7 +57,8 @@ class PEA:
         self.n_cols = parameters['n_cols']
         self.n_slices = parameters['n_slices']
         self.n_total = self.n_rows * self.n_cols * self.n_slices
-        self.time = np.arange(0, self.p_sampling * self.n_samples - 1, self.p_sampling)
+        self.time = np.arange(0, self.p_sampling * self.n_samples,
+                              self.p_sampling)[:self.n_samples]
         self.delay = 0.0
         self.direction = 1
 
