@@ -19,7 +19,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3',
-    install_requires=['numpy>=1.18.3',
+    install_requires=['numpy>=1.21',
                       'scipy>=1.4.1',
                       'opencv-python>=4.2.0.34'],
 )
