@@ -482,21 +482,15 @@ class pRF:
 
      print('\nmapping receptive fields')
 
-     data = np.reshape(data.astype(float),
-                       (self.n_samples,
-                        self.n_total))
-
      mean_signal = np.mean(data, axis = 0)
      sdev_signal = np.std(data, axis = 0)
-
 
      if np.size(mask) == 0:
          mask = mean_signal >= threshold
 
-     mask = np.reshape(mask, self.n_total)
      mask = mask.astype(bool) & (sdev_signal > 0)
-
      data = zscore(data[:, mask], axis=0)
+     mask = mask.flatten()
 
      voxel_index = np.where(mask)[0]
      n_voxels = voxel_index.size
@@ -591,21 +585,15 @@ class pRF:
 
      print('\nmapping receptive fields')
 
-     data = np.reshape(data.astype(float),
-                       (self.n_samples,
-                        self.n_total))
-
      mean_signal = np.mean(data, axis = 0)
      sdev_signal = np.std(data, axis = 0)
-
 
      if np.size(mask) == 0:
          mask = mean_signal >= threshold
 
-     mask = np.reshape(mask, self.n_total)
      mask = mask.astype(bool) & (sdev_signal > 0)
-
      data = zscore(data[:, mask], axis=0)
+     mask = mask.flatten()
 
      voxel_index = np.where(mask)[0]
      n_voxels = voxel_index.size
