@@ -4,8 +4,8 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="cni-tlbx", # Replace with your own username
-    version="2.2.3",
+    name="cni-tlbx",
+    version="2.2.4",
     author="Mario Senden",
     author_email="mario.senden@maastrichtuniversity.nl",
     description="computational neuroimaging toolbox",
@@ -19,7 +19,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3',
-    install_requires=['numpy>=1.21',
+    install_requires=['numpy>=1.22',
                       'scipy>=1.4.1',
                       'opencv-python>=4.2.0.34'],
 )
