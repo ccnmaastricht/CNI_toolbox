@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="cni-tlbx",
-    version="2.2.4",
+    version="2.2.5",
     author="Mario Senden",
     author_email="mario.senden@maastrichtuniversity.nl",
     description="computational neuroimaging toolbox",
