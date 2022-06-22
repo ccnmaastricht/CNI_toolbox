@@ -31,7 +31,7 @@ matlab.addons.toolbox.installToolbox('computational neuroimaging toolbox.mltbx')
 * [Fast & real-time pRF mapping](https://github.com/ccnmaastricht/CNI_toolbox/wiki/Fast-&-real-time-pRF-mapping-(Matlab))
 
 ## Python implementation
-![](https://img.shields.io/badge/release-v2.2.3-blueviolet.svg?style=flat)
+![](https://img.shields.io/badge/release-v2.2.4-blueviolet.svg?style=flat)
 
 This software was developed for Python 3.
 
